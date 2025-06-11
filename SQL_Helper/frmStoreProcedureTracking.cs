@@ -23,9 +23,25 @@ namespace SQL_Helper
 
         private async void frmStoreProcedureTracking_Load(object sender, EventArgs e)
         {
-            await LoadAllDatabasesAsync();
-            await LoadAllStoredProceduresAsync(_cancellationTokenSource.Token);
+            try
+            {
+                CenterLoader();
+                pictureBox1.Visible = true; // Show loader
 
+                await LoadAllDatabasesAsync();
+                await LoadAllStoredProceduresAsync(_cancellationTokenSource.Token);
+            }
+            finally
+            {
+                pictureBox1.Visible = false; // Hide loader
+            }
+        }
+
+        private void CenterLoader()
+        {
+            pictureBox1.Left = (this.ClientSize.Width - pictureBox1.Width) / 2;
+            pictureBox1.Top = (this.ClientSize.Height - pictureBox1.Height) / 2;
+            pictureBox1.BringToFront();
         }
 
         private void checkedListBoxDatabses_SelectedIndexChanged(object sender, EventArgs e)
@@ -104,7 +120,6 @@ namespace SQL_Helper
             resultTable.Columns.Add("ProcedureName", typeof(string));
             resultTable.Columns.Add("CreateDate", typeof(DateTime));
             resultTable.Columns.Add("ModifyDate", typeof(DateTime));
-            resultTable.Columns.Add("UsesAPI", typeof(string));
 
             using (SqlConnection conn = new SqlConnection(connectionString))
             {
@@ -153,20 +168,20 @@ namespace SQL_Helper
                             newRow["ProcedureName"] = row["ProcedureName"];
                             newRow["CreateDate"] = row["CreateDate"];
                             newRow["ModifyDate"] = row["ModifyDate"];
-                            newRow["UsesAPI"] = "Loading...";
+                            //newRow["UsesAPI"] = "Loading...";
                             resultTable.Rows.Add(newRow);
                         }
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show($"Error loading from DB '{dbName}': {ex.Message}");
+                        //MessageBox.Show($"Error loading from DB '{dbName}': {ex.Message}");
                     }
                 }
             }
 
             dataGridView1.DataSource = resultTable;
 
-            await UpdateApiUsageAsync(resultTable, cancellationToken);
+            //await UpdateApiUsageAsync(resultTable, cancellationToken);
         }
 
         private async Task UpdateApiUsageAsync(DataTable spTable, CancellationToken cancellationToken)
@@ -244,21 +259,7 @@ namespace SQL_Helper
 
         private void dataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
         {
-            // Ignore header clicks or invalid rows
-            if (e.RowIndex < 0 || dataGridView1.Rows[e.RowIndex].Cells["DatabaseName"].Value == null)
-                return;
-
-            string dbName = dataGridView1.Rows[e.RowIndex].Cells["DatabaseName"].Value.ToString() ?? "";
-            string spName = dataGridView1.Rows[e.RowIndex].Cells["ProcedureName"].Value.ToString() ?? "";
-
-            // Open helptext form with these values
-            frmSpHelpText helptext = new frmSpHelpText
-            {
-                DbName = dbName,
-                SpName = spName
-            };
-
-            helptext.ShowDialog();
+           
         }
 
         private void frmStoreProcedureTracking_FormClosed(object sender, FormClosedEventArgs e)
@@ -268,16 +269,17 @@ namespace SQL_Helper
 
         private void textBox1_TextChanged(object sender, EventArgs e)
         {
-            if (dataGridView1.DataSource is DataView dv)
+            if (dataGridView1.DataSource is DataTable dt)
             {
                 string search = textBox1.Text.Trim().Replace("'", "''");
 
                 if (string.IsNullOrEmpty(search))
-                    dv.RowFilter = "";
+                    dt.DefaultView.RowFilter = "";
                 else
-                    dv.RowFilter = $"ProcedureName LIKE '%{search}%'";
+                    dt.DefaultView.RowFilter = $"ProcedureName LIKE '%{search}%'";
             }
         }
+
 
 
         private void checkedListBoxDatabses_ItemCheck(object sender, ItemCheckEventArgs e)
@@ -305,7 +307,31 @@ namespace SQL_Helper
                 }
             }
 
-         
+
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            if (dataGridView1.SelectedRows.Count > 0)
+            {
+                DataGridViewRow selectedRow = dataGridView1.SelectedRows[0];
+
+                string dbName = selectedRow.Cells["DatabaseName"].Value?.ToString() ?? "";
+                string spName = selectedRow.Cells["ProcedureName"].Value?.ToString() ?? "";
+
+                // Open helptext form with these values
+                frmSpHelpText helptext = new frmSpHelpText
+                {
+                    DbName = dbName,
+                    SpName = spName
+                };
+
+                helptext.ShowDialog();
+            }
+            else
+            {
+                MessageBox.Show("Please select a row first.");
+            }
         }
 
     }

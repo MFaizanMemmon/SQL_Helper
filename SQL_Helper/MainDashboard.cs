@@ -16,6 +16,10 @@ namespace SQL_Helper
     {
         private int selectedRowIndex = -1;
         private int selectedColumnIndex = -1;
+        private DataTable databaseDetailTable;
+
+
+
 
         public MainDashboard()
         {
@@ -24,6 +28,7 @@ namespace SQL_Helper
 
         private void MainDashboard_Load(object sender, EventArgs e)
         {
+
             LoadDatabases();
         }
 
@@ -78,62 +83,64 @@ namespace SQL_Helper
                 return;
             }
 
+
+
             SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder(baseConnectionString)
             {
                 InitialCatalog = databaseName
             };
 
             string query = @"
-        SELECT
-            s.name AS SchemaName,
-            t.name AS TableName,
+                    SELECT
+                        s.name AS SchemaName,
+                        t.name AS TableName,
 
-            (
-                SELECT COUNT(*) FROM sys.triggers tr2 WHERE tr2.parent_id = t.object_id
-            ) AS TriggerCount,
+                        (
+                            SELECT COUNT(*) FROM sys.triggers tr2 WHERE tr2.parent_id = t.object_id
+                        ) AS TriggerCount,
 
-            STUFF((
-                SELECT ', ' + tr.name
-                FROM sys.triggers tr
-                WHERE tr.parent_id = t.object_id
-                FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, '') AS TriggerNames,
+                        STUFF((
+                            SELECT ', ' + tr.name
+                            FROM sys.triggers tr
+                            WHERE tr.parent_id = t.object_id
+                            FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, '') AS TriggerNames,
 
-            (
-                SELECT COUNT(DISTINCT pt.object_id)
-                FROM sys.foreign_keys fk2
-                INNER JOIN sys.tables pt ON fk2.referenced_object_id = pt.object_id
-                WHERE fk2.parent_object_id = t.object_id
-            ) AS ParentCount,
+                        (
+                            SELECT COUNT(DISTINCT pt.object_id)
+                            FROM sys.foreign_keys fk2
+                            INNER JOIN sys.tables pt ON fk2.referenced_object_id = pt.object_id
+                            WHERE fk2.parent_object_id = t.object_id
+                        ) AS ParentCount,
 
-            STUFF((
-                SELECT DISTINCT ', ' + ps.name + '.' + pt.name
-                FROM sys.foreign_keys fk2
-                INNER JOIN sys.tables pt ON fk2.referenced_object_id = pt.object_id
-                INNER JOIN sys.schemas ps ON pt.schema_id = ps.schema_id
-                WHERE fk2.parent_object_id = t.object_id
-                FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, '') AS ParentTables,
+                        STUFF((
+                            SELECT DISTINCT ', ' + ps.name + '.' + pt.name
+                            FROM sys.foreign_keys fk2
+                            INNER JOIN sys.tables pt ON fk2.referenced_object_id = pt.object_id
+                            INNER JOIN sys.schemas ps ON pt.schema_id = ps.schema_id
+                            WHERE fk2.parent_object_id = t.object_id
+                            FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, '') AS ParentTables,
 
-            (
-                SELECT COUNT(DISTINCT ct.object_id)
-                FROM sys.foreign_keys cfk2
-                INNER JOIN sys.tables ct ON cfk2.parent_object_id = ct.object_id
-                WHERE cfk2.referenced_object_id = t.object_id
-            ) AS ChildCount,
+                        (
+                            SELECT COUNT(DISTINCT ct.object_id)
+                            FROM sys.foreign_keys cfk2
+                            INNER JOIN sys.tables ct ON cfk2.parent_object_id = ct.object_id
+                            WHERE cfk2.referenced_object_id = t.object_id
+                        ) AS ChildCount,
 
-            STUFF((
-                SELECT DISTINCT ', ' + cs.name + '.' + ct.name
-                FROM sys.foreign_keys cfk2
-                INNER JOIN sys.tables ct ON cfk2.parent_object_id = ct.object_id
-                INNER JOIN sys.schemas cs ON ct.schema_id = cs.schema_id
-                WHERE cfk2.referenced_object_id = t.object_id
-                FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, '') AS ChildTables
+                        STUFF((
+                            SELECT DISTINCT ', ' + cs.name + '.' + ct.name
+                            FROM sys.foreign_keys cfk2
+                            INNER JOIN sys.tables ct ON cfk2.parent_object_id = ct.object_id
+                            INNER JOIN sys.schemas cs ON ct.schema_id = cs.schema_id
+                            WHERE cfk2.referenced_object_id = t.object_id
+                            FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, '') AS ChildTables
 
-        FROM
-            sys.tables t
-        INNER JOIN sys.schemas s ON t.schema_id = s.schema_id
-        ORDER BY
-            s.name, t.name;
-        ";
+                    FROM
+                        sys.tables t
+                    INNER JOIN sys.schemas s ON t.schema_id = s.schema_id
+                    ORDER BY
+                        s.name, t.name;
+            ";
 
             try
             {
@@ -146,9 +153,11 @@ namespace SQL_Helper
                 DataTable dt = new DataTable();
                 await Task.Run(() => da.Fill(dt));
 
+                databaseDetailTable = dt; // Store full data for filtering
+
                 dataGridViewDetail.Invoke(() =>
                 {
-                    dataGridViewDetail.DataSource = dt;
+                    dataGridViewDetail.DataSource = databaseDetailTable;
 
                     dataGridViewDetail.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
                     dataGridViewDetail.ScrollBars = ScrollBars.Both;
@@ -163,7 +172,9 @@ namespace SQL_Helper
             {
                 MessageBox.Show("Error loading table details: " + ex.Message);
             }
+
         }
+
 
 
 
@@ -201,7 +212,7 @@ namespace SQL_Helper
                 {
                     lblTotalTable.Invoke(() => lblTotalTable.Text = "Tables: " + reader["TableCount"].ToString());
                     lblTotalViews.Invoke(() => lblTotalViews.Text = "Views: " + reader["ViewCount"].ToString());
-                    lblTotalStorePrcedure.Invoke(() => lblTotalStorePrcedure.Text = "Stored Procedures: " + reader["ProcedureCount"].ToString());
+                    lblTotalStorePrcedure.Invoke(() => lblTotalStorePrcedure.Text = "Procedures: " + reader["ProcedureCount"].ToString());
                     lblTotalTrigger.Invoke(() => lblTotalTrigger.Text = "Triggers: " + reader["TriggerCount"].ToString());
                 }
             }
@@ -303,8 +314,8 @@ namespace SQL_Helper
 
         private void panel2_Click(object sender, EventArgs e)
         {
-            frmStoreProcedureTracking sp = new frmStoreProcedureTracking();
-            sp.ShowDialog();
+            //frmStoreProcedureTracking sp = new frmStoreProcedureTracking();
+            //sp.ShowDialog();
         }
 
         private async void LoadAllTriggersAsync()
@@ -324,7 +335,7 @@ namespace SQL_Helper
             resultTable.Columns.Add("IsInsteadOf", typeof(bool));
             resultTable.Columns.Add("CreateDate", typeof(DateTime));
             resultTable.Columns.Add("ModifyDate", typeof(DateTime));
-            resultTable.Columns.Add("UsesAPI"); // placeholder, filled later
+            //resultTable.Columns.Add("UsesAPI"); // placeholder, filled later
 
             using SqlConnection conn = new SqlConnection(connectionString);
             await conn.OpenAsync();
@@ -360,8 +371,8 @@ namespace SQL_Helper
                     da.Fill(dt);
 
                     // Add default placeholder for UsesAPI
-                    foreach (DataRow row in dt.Rows)
-                        row["UsesAPI"] = "Loading...";
+                    //foreach (DataRow row in dt.Rows)
+                    //    row["UsesAPI"] = "Loading...";
 
                     resultTable.Merge(dt);
                 }
@@ -374,7 +385,7 @@ namespace SQL_Helper
             dataGridViewDetail.DataSource = resultTable;
 
             // Start checking UsesAPI in background
-            _ = CheckTriggerApiUsageAsync(resultTable);
+            // _ = CheckTriggerApiUsageAsync(resultTable);
         }
 
 
@@ -467,5 +478,53 @@ namespace SQL_Helper
             }
         }
 
+        private void panel4_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
+
+        private void toolStripButton1_Click(object sender, EventArgs e)
+        {
+            frmStoreProcedureTracking sp = new frmStoreProcedureTracking();
+            sp.ShowDialog();
+        }
+
+        private void toolStripButton2_Click(object sender, EventArgs e)
+        {
+            frmTableSearching frmTableSearching = new frmTableSearching();
+            frmTableSearching.ShowDialog();
+        }
+
+        private void textBox1_TextChanged(object sender, EventArgs e)
+        {
+            if (databaseDetailTable == null || databaseDetailTable.Rows.Count == 0)
+                return;
+
+            string filterText = textBox1.Text.Trim().Replace("'", "''");
+
+            DataView dv = new DataView(databaseDetailTable);
+            dv.RowFilter = $"SchemaName LIKE '%{filterText}%' OR TableName LIKE '%{filterText}%' OR TriggerNames LIKE '%{filterText}%' OR ParentTables LIKE '%{filterText}%' OR ChildTables LIKE '%{filterText}%'";
+
+            dataGridViewDetail.DataSource = dv;
+        }
+
+        private void toolStripButton4_Click(object sender, EventArgs e)
+        {
+            frmViewPagesOnPosWorker pos = new frmViewPagesOnPosWorker();
+            pos.ShowDialog();
+        }
+
+        private void toolStripButton5_Click(object sender, EventArgs e)
+        {
+            frmConnectSQL conn = new frmConnectSQL();
+            conn.ShowDialog();
+            MainDashboard_Load(null, null);
+            if (DbConnectionHelper.ConnectionString != null)
+            {
+                toolStripButton1.Enabled = toolStripButton2.Enabled = true;
+            }
+          
+
+        }
     }
 }

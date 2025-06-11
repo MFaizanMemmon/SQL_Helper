@@ -38,9 +38,9 @@ namespace SQL_Helper
                         conn.Open();
                         MessageBox.Show("Connected Successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-                        this.Hide(); // 👈 Hide or use this.Close(); depending on your need
-                        MainDashboard db = new MainDashboard();
-                        db.ShowDialog(); // Use ShowDialog() if this is the main flow
+                        //this.Hide(); // 👈 Hide or use this.Close(); depending on your need
+                        //MainDashboard db = new MainDashboard();
+                        //db.ShowDialog(); // Use ShowDialog() if this is the main flow
                         this.Close();    // Ensures full close after dashboard is done
                     }
                     catch (Exception ex)
@@ -54,11 +54,11 @@ namespace SQL_Helper
 
         private void cmbAuthentication_SelectedIndexChanged(object sender, EventArgs e)
         {
-           
+
             if (string.Equals(cmbAuthentication.SelectedItem?.ToString(), "SQL SERVER AUTHENTICATION", StringComparison.OrdinalIgnoreCase))
             {
-                txtUserName.Text = txtPassword.Text = string.Empty;
-                txtUserName.ReadOnly = txtPassword.ReadOnly = false;
+                //txtUserName.Text = txtPassword.Text = string.Empty;
+                // txtUserName.ReadOnly = txtPassword.ReadOnly = false;
             }
             else
             {
@@ -81,7 +81,7 @@ namespace SQL_Helper
                 cmbAuthentication.Focus();
                 return false;
             }
-            
+
             else if (string.Equals(cmbAuthentication.SelectedItem?.ToString(), "SQL Server Authentication", StringComparison.OrdinalIgnoreCase))
             {
                 if (string.IsNullOrEmpty(txtUserName.Text))
@@ -101,6 +101,17 @@ namespace SQL_Helper
             }
 
             return true;
+        }
+
+        private void frmConnectSQL_Load(object sender, EventArgs e)
+        {
+            cmbAuthentication.SelectedIndex = 0;
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            frmViewPagesOnPosWorker pos = new frmViewPagesOnPosWorker();
+            pos.ShowDialog();
         }
     }
 }

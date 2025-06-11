@@ -43,27 +43,30 @@
             // label1
             // 
             label1.AutoSize = true;
-            label1.Location = new Point(79, 116);
+            label1.Location = new Point(63, 93);
+            label1.Margin = new Padding(2, 0, 2, 0);
             label1.Name = "label1";
-            label1.Size = new Size(66, 25);
+            label1.Size = new Size(54, 20);
             label1.TabIndex = 0;
             label1.Text = "Server ";
             // 
             // txtServer
             // 
-            txtServer.Location = new Point(243, 110);
+            txtServer.Location = new Point(194, 88);
+            txtServer.Margin = new Padding(2);
             txtServer.Name = "txtServer";
             txtServer.PlaceholderText = "Please Enter Server";
-            txtServer.Size = new Size(362, 31);
+            txtServer.Size = new Size(290, 27);
             txtServer.TabIndex = 1;
-            txtServer.Text = "DESKTOP-VUPCLF0";
+            txtServer.Text = "10.0.16.52";
             // 
             // label2
             // 
             label2.AutoSize = true;
-            label2.Location = new Point(79, 210);
+            label2.Location = new Point(63, 168);
+            label2.Margin = new Padding(2, 0, 2, 0);
             label2.Name = "label2";
-            label2.Size = new Size(127, 25);
+            label2.Size = new Size(106, 20);
             label2.TabIndex = 2;
             label2.Text = "Authentication";
             // 
@@ -72,64 +75,75 @@
             cmbAuthentication.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbAuthentication.FormattingEnabled = true;
             cmbAuthentication.Items.AddRange(new object[] { "SQL SERVER AUTHENTICATION", "WINDOW AUTHENTICATION" });
-            cmbAuthentication.Location = new Point(243, 202);
+            cmbAuthentication.Location = new Point(194, 162);
+            cmbAuthentication.Margin = new Padding(2);
             cmbAuthentication.Name = "cmbAuthentication";
-            cmbAuthentication.Size = new Size(362, 33);
+            cmbAuthentication.Size = new Size(290, 28);
             cmbAuthentication.TabIndex = 3;
             cmbAuthentication.SelectedIndexChanged += cmbAuthentication_SelectedIndexChanged;
             // 
             // label3
             // 
             label3.AutoSize = true;
-            label3.Location = new Point(79, 302);
+            label3.Location = new Point(63, 242);
+            label3.Margin = new Padding(2, 0, 2, 0);
             label3.Name = "label3";
-            label3.Size = new Size(99, 25);
+            label3.Size = new Size(82, 20);
             label3.TabIndex = 4;
             label3.Text = "User Name";
             // 
             // txtUserName
             // 
-            txtUserName.Location = new Point(243, 296);
+            txtUserName.Location = new Point(194, 237);
+            txtUserName.Margin = new Padding(2);
             txtUserName.Name = "txtUserName";
             txtUserName.PlaceholderText = "Please Enter User Name";
             txtUserName.ReadOnly = true;
-            txtUserName.Size = new Size(362, 31);
+            txtUserName.Size = new Size(290, 27);
             txtUserName.TabIndex = 5;
+            txtUserName.Text = "webuser";
             // 
             // label4
             // 
             label4.AutoSize = true;
-            label4.Location = new Point(79, 394);
+            label4.Location = new Point(63, 315);
+            label4.Margin = new Padding(2, 0, 2, 0);
             label4.Name = "label4";
-            label4.Size = new Size(87, 25);
+            label4.Size = new Size(70, 20);
             label4.TabIndex = 6;
             label4.Text = "Password";
             // 
             // txtPassword
             // 
-            txtPassword.Location = new Point(243, 388);
+            txtPassword.Location = new Point(194, 310);
+            txtPassword.Margin = new Padding(2);
             txtPassword.Name = "txtPassword";
             txtPassword.PasswordChar = '*';
             txtPassword.PlaceholderText = "Please Enter Password";
             txtPassword.ReadOnly = true;
-            txtPassword.Size = new Size(362, 31);
+            txtPassword.Size = new Size(290, 27);
             txtPassword.TabIndex = 7;
+            txtPassword.Text = "A8#kc0Su90#$";
             // 
             // chkTrustedCertificate
             // 
             chkTrustedCertificate.AutoSize = true;
-            chkTrustedCertificate.Location = new Point(243, 480);
+            chkTrustedCertificate.Checked = true;
+            chkTrustedCertificate.CheckState = CheckState.Checked;
+            chkTrustedCertificate.Location = new Point(194, 384);
+            chkTrustedCertificate.Margin = new Padding(2);
             chkTrustedCertificate.Name = "chkTrustedCertificate";
-            chkTrustedCertificate.Size = new Size(178, 29);
+            chkTrustedCertificate.Size = new Size(151, 24);
             chkTrustedCertificate.TabIndex = 8;
             chkTrustedCertificate.Text = "Trusted Certificate";
             chkTrustedCertificate.UseVisualStyleBackColor = true;
             // 
             // btnConnect
             // 
-            btnConnect.Location = new Point(79, 567);
+            btnConnect.Location = new Point(63, 454);
+            btnConnect.Margin = new Padding(2);
             btnConnect.Name = "btnConnect";
-            btnConnect.Size = new Size(526, 50);
+            btnConnect.Size = new Size(421, 40);
             btnConnect.TabIndex = 9;
             btnConnect.Text = "Connect";
             btnConnect.UseVisualStyleBackColor = true;
@@ -137,10 +151,10 @@
             // 
             // frmConnectSQL
             // 
-            AutoScaleDimensions = new SizeF(10F, 25F);
+            AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = SystemColors.ActiveCaption;
-            ClientSize = new Size(679, 667);
+            ClientSize = new Size(543, 556);
             Controls.Add(btnConnect);
             Controls.Add(chkTrustedCertificate);
             Controls.Add(txtPassword);
@@ -151,12 +165,14 @@
             Controls.Add(label2);
             Controls.Add(txtServer);
             Controls.Add(label1);
+            Margin = new Padding(2);
             MaximizeBox = false;
             MinimizeBox = false;
             Name = "frmConnectSQL";
             ShowIcon = false;
             StartPosition = FormStartPosition.CenterScreen;
             Text = "Connect SQL Server";
+            Load += frmConnectSQL_Load;
             ResumeLayout(false);
             PerformLayout();
         }
