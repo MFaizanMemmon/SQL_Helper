@@ -523,8 +523,26 @@ namespace SQL_Helper
             {
                 toolStripButton1.Enabled = toolStripButton2.Enabled = true;
             }
-          
 
+
+        }
+
+        private void toolStripButton6_Click(object sender, EventArgs e)
+        {
+            frmComparisionDatabase comDb = new frmComparisionDatabase();
+            comDb.ShowDialog();
+        }
+
+        private void toolStripTextBox1_Click(object sender, EventArgs e)
+        {
+            frm_Sp_Xray xray = new frm_Sp_Xray();
+            xray.ShowDialog();
+        }
+
+        private void toolStripButton7_Click(object sender, EventArgs e)
+        {
+            frmDummyData dummy = new frmDummyData();
+            dummy.ShowDialog();
         }
     }
 }

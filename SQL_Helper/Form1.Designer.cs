@@ -29,7 +29,6 @@
         private void InitializeComponent()
         {
             label1 = new Label();
-            txtServer = new TextBox();
             label2 = new Label();
             cmbAuthentication = new ComboBox();
             label3 = new Label();
@@ -38,6 +37,7 @@
             txtPassword = new TextBox();
             chkTrustedCertificate = new CheckBox();
             btnConnect = new Button();
+            cmbServer = new ComboBox();
             SuspendLayout();
             // 
             // label1
@@ -49,16 +49,6 @@
             label1.Size = new Size(54, 20);
             label1.TabIndex = 0;
             label1.Text = "Server ";
-            // 
-            // txtServer
-            // 
-            txtServer.Location = new Point(194, 88);
-            txtServer.Margin = new Padding(2);
-            txtServer.Name = "txtServer";
-            txtServer.PlaceholderText = "Please Enter Server";
-            txtServer.Size = new Size(290, 27);
-            txtServer.TabIndex = 1;
-            txtServer.Text = "10.0.16.52";
             // 
             // label2
             // 
@@ -101,7 +91,6 @@
             txtUserName.ReadOnly = true;
             txtUserName.Size = new Size(290, 27);
             txtUserName.TabIndex = 5;
-            txtUserName.Text = "webuser";
             // 
             // label4
             // 
@@ -123,7 +112,6 @@
             txtPassword.ReadOnly = true;
             txtPassword.Size = new Size(290, 27);
             txtPassword.TabIndex = 7;
-            txtPassword.Text = "A8#kc0Su90#$";
             // 
             // chkTrustedCertificate
             // 
@@ -149,12 +137,22 @@
             btnConnect.UseVisualStyleBackColor = true;
             btnConnect.Click += btnConnect_Click;
             // 
+            // cmbServer
+            // 
+            cmbServer.FormattingEnabled = true;
+            cmbServer.Location = new Point(194, 85);
+            cmbServer.Name = "cmbServer";
+            cmbServer.Size = new Size(290, 28);
+            cmbServer.TabIndex = 10;
+            cmbServer.SelectedIndexChanged += cmbServer_SelectedIndexChanged_1;
+            // 
             // frmConnectSQL
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = SystemColors.ActiveCaption;
             ClientSize = new Size(543, 556);
+            Controls.Add(cmbServer);
             Controls.Add(btnConnect);
             Controls.Add(chkTrustedCertificate);
             Controls.Add(txtPassword);
@@ -163,7 +161,6 @@
             Controls.Add(label3);
             Controls.Add(cmbAuthentication);
             Controls.Add(label2);
-            Controls.Add(txtServer);
             Controls.Add(label1);
             Margin = new Padding(2);
             MaximizeBox = false;
@@ -180,7 +177,6 @@
         #endregion
 
         private Label label1;
-        private TextBox txtServer;
         private Label label2;
         private ComboBox cmbAuthentication;
         private Label label3;
@@ -189,5 +185,6 @@
         private TextBox txtPassword;
         private CheckBox chkTrustedCertificate;
         private Button btnConnect;
+        private ComboBox cmbServer;
     }
 }
