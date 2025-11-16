@@ -371,7 +371,7 @@ ORDER BY c.ORDINAL_POSITION;
                             nextX = txtEnd.Right + 10;
                         }
 
-                         if (dataType.Equals("bit", StringComparison.OrdinalIgnoreCase))
+                        if (dataType.Equals("bit", StringComparison.OrdinalIgnoreCase))
                         {
                             TextBox txtPercentage = new TextBox
                             {
@@ -522,12 +522,24 @@ ORDER BY c.ORDINAL_POSITION;
                     if (ctrl is Label lbl && lbl.Text.Contains("("))
                     {
                         string columnName = lbl.Text.Split(' ')[0];
+                        
                         string dataType = lbl.Text.Contains("(")
                             ? lbl.Text.Split('(')[1].Replace(")", "").ToLower()
                             : "varchar";
+                        
+                        bool isPk = lbl.Text.Contains("[PK]");
 
 
                         insertColumns.Add(columnName);
+
+                        if (isPk)
+                        {
+                            var lastkey = GetMaxPrimaryKeyValue(tableName);
+                        
+                        
+                        }
+
+
                         continue;
 
                         //// Controls in same row
@@ -670,6 +682,57 @@ ORDER BY c.ORDINAL_POSITION;
 
             MessageBox.Show($"{rowCount} rows inserted successfully into {tableName}.");
         }
+
+        public object GetMaxPrimaryKeyValue(string tableName)
+        {
+            string databaseName = cmbDatabaes.SelectedItem.ToString();
+            string baseConnectionString = DbConnectionHelper.ConnectionString;
+
+            SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder(baseConnectionString)
+            {
+                InitialCatalog = databaseName
+            };
+
+            using (var connection = new SqlConnection(builder.ToString()))
+            {
+                connection.Open();
+
+                string pkQuery = @"
+                        SELECT TOP 1 c.COLUMN_NAME
+                        FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+                        JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE c
+                            ON tc.CONSTRAINT_NAME = c.CONSTRAINT_NAME
+                           AND tc.TABLE_SCHEMA = c.TABLE_SCHEMA
+                           AND tc.TABLE_NAME = c.TABLE_NAME
+                        WHERE tc.TABLE_NAME = @TableName
+                          AND tc.TABLE_SCHEMA = 'dbo'
+                          AND tc.CONSTRAINT_TYPE = 'PRIMARY KEY'";
+
+
+                string pkColumn = null;
+                using (var cmd = new SqlCommand(pkQuery, connection))
+                {
+                    cmd.Parameters.AddWithValue("@TableName", tableName);
+                    cmd.Parameters.AddWithValue("@Schema", "dbo");
+                    pkColumn = cmd.ExecuteScalar()?.ToString();
+                }
+
+                if (string.IsNullOrEmpty(pkColumn))
+                    throw new Exception($"No primary key found for table {tableName}");
+
+                // Step 2: Build and run MAX query safely
+                string safeTableName = "[" + tableName.Replace("]", "]]") + "]";
+                string safeColumnName = "[" + pkColumn.Replace("]", "]]") + "]";
+                string sql = $"SELECT MAX({safeColumnName}) FROM {safeTableName}";
+
+                using (var cmd = new SqlCommand(sql, connection))
+                {
+                    var maxValue = cmd.ExecuteScalar();
+                    return maxValue == DBNull.Value ? null : maxValue;
+                }
+            }
+        }
+
 
 
     }

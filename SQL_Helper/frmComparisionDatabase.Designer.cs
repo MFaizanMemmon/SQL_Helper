@@ -38,7 +38,7 @@
             // button1
             // 
             button1.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            button1.Location = new Point(599, 9);
+            button1.Location = new Point(1000, 9);
             button1.Margin = new Padding(3, 2, 3, 2);
             button1.Name = "button1";
             button1.Size = new Size(137, 22);
@@ -69,13 +69,13 @@
             panel1.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             panel1.Location = new Point(12, 103);
             panel1.Name = "panel1";
-            panel1.Size = new Size(724, 289);
+            panel1.Size = new Size(1125, 463);
             panel1.TabIndex = 9;
             // 
             // btnExportExcel
             // 
             btnExportExcel.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            btnExportExcel.Location = new Point(599, 60);
+            btnExportExcel.Location = new Point(1000, 60);
             btnExportExcel.Name = "btnExportExcel";
             btnExportExcel.Size = new Size(136, 23);
             btnExportExcel.TabIndex = 10;
@@ -88,7 +88,7 @@
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = SystemColors.ActiveCaption;
-            ClientSize = new Size(747, 423);
+            ClientSize = new Size(1148, 597);
             Controls.Add(btnExportExcel);
             Controls.Add(panel1);
             Controls.Add(textBox1);
@@ -96,9 +96,10 @@
             Controls.Add(button1);
             Margin = new Padding(3, 2, 3, 2);
             MaximizeBox = false;
+            MinimizeBox = false;
             Name = "frmComparisionDatabase";
+            StartPosition = FormStartPosition.CenterScreen;
             Text = "Comparision Database";
-            WindowState = FormWindowState.Maximized;
             Load += frmComparisionDatabase_Load;
             ResumeLayout(false);
             PerformLayout();

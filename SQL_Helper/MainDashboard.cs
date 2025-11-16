@@ -1,4 +1,5 @@
-﻿using Microsoft.Data.SqlClient;
+﻿using DocumentFormat.OpenXml.Spreadsheet;
+using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -9,6 +10,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using static System.ComponentModel.Design.ObjectSelectorEditor;
 
 namespace SQL_Helper
 {
@@ -112,28 +114,14 @@ namespace SQL_Helper
                             WHERE fk2.parent_object_id = t.object_id
                         ) AS ParentCount,
 
-                        STUFF((
-                            SELECT DISTINCT ', ' + ps.name + '.' + pt.name
-                            FROM sys.foreign_keys fk2
-                            INNER JOIN sys.tables pt ON fk2.referenced_object_id = pt.object_id
-                            INNER JOIN sys.schemas ps ON pt.schema_id = ps.schema_id
-                            WHERE fk2.parent_object_id = t.object_id
-                            FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, '') AS ParentTables,
+                        
 
                         (
                             SELECT COUNT(DISTINCT ct.object_id)
                             FROM sys.foreign_keys cfk2
                             INNER JOIN sys.tables ct ON cfk2.parent_object_id = ct.object_id
                             WHERE cfk2.referenced_object_id = t.object_id
-                        ) AS ChildCount,
-
-                        STUFF((
-                            SELECT DISTINCT ', ' + cs.name + '.' + ct.name
-                            FROM sys.foreign_keys cfk2
-                            INNER JOIN sys.tables ct ON cfk2.parent_object_id = ct.object_id
-                            INNER JOIN sys.schemas cs ON ct.schema_id = cs.schema_id
-                            WHERE cfk2.referenced_object_id = t.object_id
-                            FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, '') AS ChildTables
+                        ) AS ChildCount
 
                     FROM
                         sys.tables t
@@ -141,6 +129,24 @@ namespace SQL_Helper
                     ORDER BY
                         s.name, t.name;
             ";
+
+            //STUFF((
+            //    SELECT DISTINCT ', ' + ps.name + '.' + pt.name
+            //    FROM sys.foreign_keys fk2
+            //    INNER JOIN sys.tables pt ON fk2.referenced_object_id = pt.object_id
+            //    INNER JOIN sys.schemas ps ON pt.schema_id = ps.schema_id
+            //    WHERE fk2.parent_object_id = t.object_id
+            //    FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, '') AS ParentTables,
+
+            //,
+
+            //            STUFF((
+            //                SELECT DISTINCT ', ' + cs.name + '.' + ct.name
+            //                FROM sys.foreign_keys cfk2
+            //                INNER JOIN sys.tables ct ON cfk2.parent_object_id = ct.object_id
+            //                INNER JOIN sys.schemas cs ON ct.schema_id = cs.schema_id
+            //                WHERE cfk2.referenced_object_id = t.object_id
+            //                FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, '') AS ChildTables
 
             try
             {
@@ -277,22 +283,22 @@ namespace SQL_Helper
 
         }
 
-        private Color GetColorByIndex(int index)
-        {
-            Color[] colors = new Color[]
-            {
-        Color.Black,        // High contrast default
-        Color.DarkOrange,   // Bright and warm
-        Color.MediumBlue,   // Strong blue
-        Color.DarkViolet,   // Very distinct
-        Color.Crimson,      // Dark red tone
-        Color.SeaGreen,     // Deep green
-        Color.Goldenrod,    // Yellowish tone
-        Color.SlateGray     // Neutral contrast
-            };
+        //private Color GetColorByIndex(int index)
+        //{
+        //    Color[] colors = new Color[]
+        //    {
+        //Color.Black,        // High contrast default
+        //Color.DarkOrange,   // Bright and warm
+        //Color.MediumBlue,   // Strong blue
+        //Color.DarkViolet,   // Very distinct
+        //Color.Crimson,      // Dark red tone
+        //Color.SeaGreen,     // Deep green
+        //Color.Goldenrod,    // Yellowish tone
+        //Color.SlateGray     // Neutral contrast
+        //    };
 
-            return colors[index % colors.Length];
-        }
+        //    return colors[index % colors.Length];
+        //}
 
 
 

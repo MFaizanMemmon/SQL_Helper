@@ -71,6 +71,9 @@
             label5 = new Label();
             pictureBox5 = new PictureBox();
             pictureBox6 = new PictureBox();
+            panel6 = new Panel();
+            label7 = new Label();
+            lblTotalRowsCount = new Label();
             ((System.ComponentModel.ISupportInitialize)dataGridViewDetail).BeginInit();
             panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)pictureBox4).BeginInit();
@@ -85,6 +88,7 @@
             panel5.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)pictureBox5).BeginInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox6).BeginInit();
+            panel6.SuspendLayout();
             SuspendLayout();
             // 
             // listBoxDB
@@ -95,7 +99,7 @@
             listBoxDB.Location = new Point(7, 109);
             listBoxDB.Margin = new Padding(2);
             listBoxDB.Name = "listBoxDB";
-            listBoxDB.Size = new Size(190, 559);
+            listBoxDB.Size = new Size(190, 574);
             listBoxDB.TabIndex = 0;
             listBoxDB.SelectedIndexChanged += listBoxDB_SelectedIndexChanged;
             // 
@@ -116,7 +120,7 @@
             dataGridViewDetail.ReadOnly = true;
             dataGridViewDetail.RowHeadersWidth = 62;
             dataGridViewDetail.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dataGridViewDetail.Size = new Size(1013, 455);
+            dataGridViewDetail.Size = new Size(1013, 461);
             dataGridViewDetail.TabIndex = 1;
             dataGridViewDetail.CellClick += dataGridViewTableDetail_CellClick;
             dataGridViewDetail.CellPainting += dataGridViewTableDetail_CellPainting;
@@ -527,12 +531,42 @@
             pictureBox6.TabStop = false;
             pictureBox6.Visible = false;
             // 
+            // panel6
+            // 
+            panel6.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            panel6.BackColor = SystemColors.ButtonFace;
+            panel6.Controls.Add(lblTotalRowsCount);
+            panel6.Controls.Add(label7);
+            panel6.Location = new Point(0, 688);
+            panel6.Name = "panel6";
+            panel6.Size = new Size(1222, 27);
+            panel6.TabIndex = 10;
+            // 
+            // label7
+            // 
+            label7.AutoSize = true;
+            label7.Location = new Point(6, 4);
+            label7.Name = "label7";
+            label7.Size = new Size(35, 15);
+            label7.TabIndex = 0;
+            label7.Text = "Rows";
+            // 
+            // lblTotalRowsCount
+            // 
+            lblTotalRowsCount.AutoSize = true;
+            lblTotalRowsCount.Location = new Point(47, 4);
+            lblTotalRowsCount.Name = "lblTotalRowsCount";
+            lblTotalRowsCount.Size = new Size(13, 15);
+            lblTotalRowsCount.TabIndex = 1;
+            lblTotalRowsCount.Text = "0";
+            // 
             // MainDashboard
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = SystemColors.ActiveCaption;
-            ClientSize = new Size(1222, 685);
+            ClientSize = new Size(1222, 711);
+            Controls.Add(panel6);
             Controls.Add(pictureBox6);
             Controls.Add(panel5);
             Controls.Add(textBox1);
@@ -570,6 +604,8 @@
             panel5.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)pictureBox5).EndInit();
             ((System.ComponentModel.ISupportInitialize)pictureBox6).EndInit();
+            panel6.ResumeLayout(false);
+            panel6.PerformLayout();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -617,5 +653,8 @@
         private ToolStripTextBox toolStripTextBox1;
         private ToolStripSeparator toolStripSeparator4;
         private ToolStripButton toolStripButton7;
+        private Panel panel6;
+        private Label label7;
+        private Label lblTotalRowsCount;
     }
 }
