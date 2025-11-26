@@ -90,7 +90,7 @@ namespace SQL_Helper
 
             bool targetOk = TryCreateConnectionString(
                 txtTargetServer.Text,
-                txtTargetDatabase.Text,
+                "",
                 txtTargetUserName.Text,
                 txtTargetPassword.Text,
                 cmbTargetAuthentication.Text,
@@ -100,7 +100,7 @@ namespace SQL_Helper
 
             bool compareOk = TryCreateConnectionString(
                 txtCompareServerName.Text,
-                txtCompareDatabase.Text,
+                "",
                 txtCompareUserName.Text,
                 txtComparePassword.Text,
                 txtCompareAuthType.Text,
