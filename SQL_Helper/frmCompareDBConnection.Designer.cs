@@ -90,7 +90,6 @@
             txtTargetPassword.PlaceholderText = "Please Enter Password";
             txtTargetPassword.Size = new Size(254, 23);
             txtTargetPassword.TabIndex = 17;
-            txtTargetPassword.Text = "A8#kc0Su90#$";
             // 
             // label4
             // 
@@ -110,7 +109,6 @@
             txtTargetUserName.PlaceholderText = "Please Enter User Name";
             txtTargetUserName.Size = new Size(254, 23);
             txtTargetUserName.TabIndex = 15;
-            txtTargetUserName.Text = "webuser";
             // 
             // label3
             // 
@@ -152,7 +150,6 @@
             txtTargetServer.PlaceholderText = "Please Enter Server";
             txtTargetServer.Size = new Size(254, 23);
             txtTargetServer.TabIndex = 11;
-            txtTargetServer.Text = "10.0.16.52";
             // 
             // label1
             // 
@@ -270,7 +267,6 @@
             txtCompareServerName.PlaceholderText = "Please Enter Server";
             txtCompareServerName.Size = new Size(254, 23);
             txtCompareServerName.TabIndex = 11;
-            txtCompareServerName.Text = "10.0.16.52";
             // 
             // checkBox1
             // 
@@ -304,7 +300,6 @@
             txtComparePassword.PlaceholderText = "Please Enter Password";
             txtComparePassword.Size = new Size(254, 23);
             txtComparePassword.TabIndex = 17;
-            txtComparePassword.Text = "A8#kc0Su90#$";
             // 
             // txtCompareAuthType
             // 
@@ -346,7 +341,6 @@
             txtCompareUserName.PlaceholderText = "Please Enter User Name";
             txtCompareUserName.Size = new Size(254, 23);
             txtCompareUserName.TabIndex = 15;
-            txtCompareUserName.Text = "webuser";
             // 
             // frmCompareDBConnection
             // 
