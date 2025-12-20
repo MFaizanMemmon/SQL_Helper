@@ -1,4 +1,5 @@
-﻿using DocumentFormat.OpenXml.Spreadsheet;
+﻿using DocumentFormat.OpenXml.Office2010.Excel;
+using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
@@ -19,7 +20,7 @@ namespace SQL_Helper
         private int selectedRowIndex = -1;
         private int selectedColumnIndex = -1;
         private DataTable databaseDetailTable;
-
+        private CancellationTokenSource _cts;
 
 
 
@@ -46,6 +47,7 @@ namespace SQL_Helper
             }
 
             listBoxDB.Enabled = true;
+            btnTable_Click(sender, e);
         }
 
         private void LoadDatabases()
@@ -216,10 +218,10 @@ namespace SQL_Helper
 
                 if (await reader.ReadAsync())
                 {
-                    lblTotalTable.Invoke(() => lblTotalTable.Text = "Tables: " + reader["TableCount"].ToString());
-                    lblTotalViews.Invoke(() => lblTotalViews.Text = "Views: " + reader["ViewCount"].ToString());
-                    lblTotalStorePrcedure.Invoke(() => lblTotalStorePrcedure.Text = "Procedures: " + reader["ProcedureCount"].ToString());
-                    lblTotalTrigger.Invoke(() => lblTotalTrigger.Text = "Triggers: " + reader["TriggerCount"].ToString());
+                    lblTotalTable.Invoke(() => lblTotalTable.Text = reader["TableCount"].ToString());
+                    lblTotalViews.Invoke(() => lblTotalViews.Text = reader["ViewCount"].ToString());
+                    lblTotalStorePrcedure.Invoke(() => lblTotalStorePrcedure.Text = reader["ProcedureCount"].ToString());
+                    lblTotalTrigger.Invoke(() => lblTotalTrigger.Text = reader["TriggerCount"].ToString());
                 }
             }
             catch (Exception ex)
@@ -324,7 +326,7 @@ namespace SQL_Helper
             //sp.ShowDialog();
         }
 
-        private async void LoadAllTriggersAsync()
+        private async Task LoadAllTriggersAsync()
         {
             string? connectionString = DbConnectionHelper.ConnectionString;
 
@@ -516,8 +518,7 @@ namespace SQL_Helper
 
         private void toolStripButton4_Click(object sender, EventArgs e)
         {
-            frmViewPagesOnPosWorker pos = new frmViewPagesOnPosWorker();
-            pos.ShowDialog();
+           
         }
 
         private void toolStripButton5_Click(object sender, EventArgs e)
@@ -527,7 +528,7 @@ namespace SQL_Helper
             MainDashboard_Load(null, null);
             if (DbConnectionHelper.ConnectionString != null)
             {
-                toolStripButton1.Enabled = toolStripButton2.Enabled = true;
+                toolStripButton1.Enabled = toolStripButton2.Enabled = toolStripButton7.Enabled = true;
             }
 
 
@@ -550,5 +551,219 @@ namespace SQL_Helper
             frmDummyData dummy = new frmDummyData();
             dummy.ShowDialog();
         }
+
+        private void panel1_Paint(object sender, PaintEventArgs e)
+        {
+
+
+        }
+
+        private void btnTable_Click(object sender, EventArgs e)
+        {
+            if (listBoxDB.SelectedItem == null)
+            {
+                MessageBox.Show("Please select a database first.");
+                return;
+            }
+
+            btnTable.BackColor = System.Drawing.Color.LightBlue;
+            btnShowProcedures.BackColor = System.Drawing.Color.WhiteSmoke;
+            btnShowView.BackColor = System.Drawing.Color.WhiteSmoke;
+            btnShowTriggers.BackColor = System.Drawing.Color.WhiteSmoke;
+            btnShowTypes.BackColor = System.Drawing.Color.WhiteSmoke;
+            dataGridViewDetail.DataSource = null;
+            LoadDatabaseDetail(listBoxDB.SelectedItem.ToString()).ConfigureAwait(false);
+
+        }
+
+        private async void btnShowProcedures_Click(object sender, EventArgs e)
+        {
+            if (listBoxDB.SelectedItem == null)
+            {
+                MessageBox.Show("Please select a database first.");
+                return;
+            }
+
+            // 🔹 UI highlighting
+            btnTable.BackColor = System.Drawing.Color.White;
+            btnShowProcedures.BackColor = System.Drawing.Color.LightBlue;
+            btnShowView.BackColor = System.Drawing.Color.WhiteSmoke;
+            btnShowTriggers.BackColor = System.Drawing.Color.WhiteSmoke;
+            btnShowTypes.BackColor = System.Drawing.Color.WhiteSmoke;
+
+            dataGridViewDetail.DataSource = null;
+
+            string selectedDb = listBoxDB.SelectedItem.ToString();
+
+            try
+            {
+                // ✅ Correct title
+                this.Text = "Loading Procedures...";
+                this.Refresh();
+
+                // ✅ Load procedures for ONE database
+                await LoadProceduresForSingleDatabaseAsync(selectedDb);
+
+                // ✅ Restore title
+                this.Text = "SQL Explorer - Procedures";
+            }
+            catch (OperationCanceledException)
+            {
+                // ignored
+            }
+        }
+
+
+        private void btnShowView_Click(object sender, EventArgs e)
+        {
+            if (listBoxDB.SelectedItem == null)
+            {
+                MessageBox.Show("Please select a database first.");
+                return;
+            }
+
+            btnTable.BackColor = System.Drawing.Color.White;
+            btnShowProcedures.BackColor = System.Drawing.Color.WhiteSmoke;
+            btnShowView.BackColor = System.Drawing.Color.LightBlue;
+            btnShowTriggers.BackColor = System.Drawing.Color.WhiteSmoke;
+            btnShowTypes.BackColor = System.Drawing.Color.WhiteSmoke;
+            dataGridViewDetail.DataSource = null;
+        }
+
+        private async void btnShowTriggers_Click(object sender, EventArgs e)
+        {
+            if (listBoxDB.SelectedItem == null)
+            {
+                MessageBox.Show("Please select a database first.");
+                return;
+            }
+
+            btnTable.BackColor = System.Drawing.Color.White;
+            btnShowProcedures.BackColor = System.Drawing.Color.WhiteSmoke;
+            btnShowView.BackColor = System.Drawing.Color.WhiteSmoke;
+            btnShowTriggers.BackColor = System.Drawing.Color.LightBlue;
+            btnShowTypes.BackColor = System.Drawing.Color.WhiteSmoke;
+
+            dataGridViewDetail.DataSource = null;
+
+            // ✅ Show loading title
+            this.Text = "Loading Triggers...";
+            this.Refresh();
+
+            // ✅ WAIT until loading finishes
+            await LoadAllTriggersAsync();
+
+            // ✅ Restore title AFTER loading completes
+            this.Text = "SQL Explorer - Triggers";
+        }
+
+
+        private void btnShowTypes_Click(object sender, EventArgs e)
+        {
+            if (listBoxDB.SelectedItem == null)
+            {
+                MessageBox.Show("Please select a database first.");
+                return;
+            }
+
+            btnTable.BackColor = System.Drawing.Color.White;
+            btnShowProcedures.BackColor = System.Drawing.Color.WhiteSmoke;
+            btnShowView.BackColor = System.Drawing.Color.WhiteSmoke;
+            btnShowTriggers.BackColor = System.Drawing.Color.White;
+            btnShowTypes.BackColor = System.Drawing.Color.LightBlue;
+            dataGridViewDetail.DataSource = null;
+        }
+
+        private async Task LoadProceduresForSingleDatabaseAsync(string databaseName)
+        {
+            if (string.IsNullOrWhiteSpace(databaseName))
+            {
+                MessageBox.Show("Invalid database selected.");
+                return;
+            }
+
+            _cts?.Cancel();
+            _cts = new CancellationTokenSource();
+
+            try
+            {
+                this.Text = "Loading Procedures...";
+                this.Refresh();
+
+                // ✅ CALL METHOD ON CURRENT FORM
+                await LoadStoredProceduresAsync(
+                    new List<string> { databaseName },
+                    _cts.Token
+                );
+
+                this.Text = "SQL Explorer - Procedures";
+            }
+            catch (OperationCanceledException)
+            {
+                // ignored
+            }
+        }
+
+        public async Task LoadStoredProceduresAsync(
+        List<string> databases,
+        CancellationToken token)
+        {
+            string cs = DbConnectionHelper.ConnectionString;
+            if (string.IsNullOrWhiteSpace(cs)) return;
+
+            DataTable table = new DataTable();
+            table.Columns.Add("DatabaseName");
+            table.Columns.Add("ProcedureName");
+            table.Columns.Add("CreateDate", typeof(DateTime));
+            table.Columns.Add("ModifyDate", typeof(DateTime));
+
+            using SqlConnection conn = new SqlConnection(cs);
+            await conn.OpenAsync(token);
+
+            foreach (string db in databases)
+            {
+                token.ThrowIfCancellationRequested();
+
+                try
+                {
+                    conn.ChangeDatabase(db);
+
+                    string sql = @"
+                        SELECT
+                            @db AS DatabaseName,
+                            SCHEMA_NAME(schema_id) + '.' + name AS ProcedureName,
+                            create_date,
+                            modify_date
+                        FROM sys.procedures
+                        ORDER BY name";
+
+                    using SqlCommand cmd = new SqlCommand(sql, conn);
+                    cmd.Parameters.AddWithValue("@db", db);
+
+                    using SqlDataAdapter da = new SqlDataAdapter(cmd);
+                    DataTable dt = new DataTable();
+                    da.Fill(dt);
+
+                    foreach (DataRow r in dt.Rows)
+                    {
+                        table.Rows.Add(
+                            r["DatabaseName"],
+                            r["ProcedureName"],
+                            r["create_date"],
+                            r["modify_date"]
+                        );
+                    }
+                }
+                catch
+                {
+                    // optional logging
+                }
+            }
+
+            dataGridViewDetail.DataSource = table;
+        }
+
+
+
     }
 }

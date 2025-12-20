@@ -1,11 +1,9 @@
 ﻿using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Data;
-using System.Drawing;
 using System.Linq;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -13,326 +11,215 @@ namespace SQL_Helper
 {
     public partial class frmStoreProcedureTracking : Form
     {
-        private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+        private CancellationTokenSource _cts;
 
         public frmStoreProcedureTracking()
         {
             InitializeComponent();
-
         }
 
+        // ================= FORM LOAD =================
         private async void frmStoreProcedureTracking_Load(object sender, EventArgs e)
         {
             try
             {
+                pictureBox1.Visible = true;
                 CenterLoader();
-                pictureBox1.Visible = true; // Show loader
-
                 await LoadAllDatabasesAsync();
-                await LoadAllStoredProceduresAsync(_cancellationTokenSource.Token);
             }
             finally
             {
-                pictureBox1.Visible = false; // Hide loader
+                pictureBox1.Visible = false;
             }
         }
 
         private void CenterLoader()
         {
-            pictureBox1.Left = (this.ClientSize.Width - pictureBox1.Width) / 2;
-            pictureBox1.Top = (this.ClientSize.Height - pictureBox1.Height) / 2;
+            pictureBox1.Left = (ClientSize.Width - pictureBox1.Width) / 2;
+            pictureBox1.Top = (ClientSize.Height - pictureBox1.Height) / 2;
             pictureBox1.BringToFront();
         }
 
-        private void checkedListBoxDatabses_SelectedIndexChanged(object sender, EventArgs e)
-        {
-
-        }
+        // ================= LOAD DATABASES =================
         private async Task LoadAllDatabasesAsync()
         {
-            string? baseConnectionString = DbConnectionHelper.ConnectionString;
-
-            if (string.IsNullOrWhiteSpace(baseConnectionString))
+            string cs = DbConnectionHelper.ConnectionString;
+            if (string.IsNullOrWhiteSpace(cs))
             {
                 MessageBox.Show("Connection string is missing.");
+                return;
+            }
+
+            using SqlConnection con = new SqlConnection(cs);
+            await con.OpenAsync();
+
+            string sql = @"
+                SELECT name
+                FROM sys.databases
+                WHERE name NOT IN ('master','tempdb','model','msdb')
+                ORDER BY name";
+
+            using SqlCommand cmd = new SqlCommand(sql, con);
+            using SqlDataReader reader = await cmd.ExecuteReaderAsync();
+
+            checkedListBoxDatabses.Items.Clear();
+
+            while (await reader.ReadAsync())
+            {
+                checkedListBoxDatabses.Items.Add(reader.GetString(0), false);
+            }
+        }
+
+        // ================= CHECK → LOAD PROCEDURES =================
+        private async void checkedListBoxDatabses_ItemCheck(object sender, ItemCheckEventArgs e)
+        {
+            if (sender is not CheckedListBox clb) return;
+
+            List<string> selectedDatabases = new();
+
+            for (int i = 0; i < clb.Items.Count; i++)
+            {
+                bool isChecked = (i == e.Index)
+                    ? e.NewValue == CheckState.Checked
+                    : clb.GetItemChecked(i);
+
+                if (isChecked)
+                    selectedDatabases.Add(clb.Items[i].ToString());
+            }
+
+            _cts?.Cancel();
+            _cts = new CancellationTokenSource();
+
+            if (selectedDatabases.Count == 0)
+            {
+                dataGridView1.DataSource = null;
+                Text = "Track Store Procedure";
                 return;
             }
 
             try
             {
-                using SqlConnection con = new SqlConnection(baseConnectionString);
-                await con.OpenAsync();
+                Text = "Loading Procedures...";
+                Refresh();
 
-                string query = @"
-            SELECT name 
-            FROM sys.databases 
-            WHERE name NOT IN ('master', 'tempdb', 'model', 'msdb') 
-            ORDER BY name;";
+                await LoadStoredProceduresAsync(selectedDatabases, _cts.Token);
 
-                using SqlCommand cmd = new SqlCommand(query, con);
-                using SqlDataReader reader = await cmd.ExecuteReaderAsync();
-
-                // Clear items safely on UI thread
-                checkedListBoxDatabses.Invoke((Action)(() =>
-                {
-                    checkedListBoxDatabses.Items.Clear();
-                }));
-
-                // Add items safely on UI thread
-                while (await reader.ReadAsync())
-                {
-                    string dbName = reader["name"].ToString();
-                    checkedListBoxDatabses.Invoke((Action)(() =>
-                    {
-                        checkedListBoxDatabses.Items.Add(dbName);
-                    }));
-                }
-
-                // After adding all items, check all of them on UI thread
-                checkedListBoxDatabses.Invoke((Action)(() =>
-                {
-                    for (int i = 0; i < checkedListBoxDatabses.Items.Count; i++)
-                    {
-                        checkedListBoxDatabses.SetItemChecked(i, true);
-                    }
-                }));
+                Text = "Track Store Procedure";
             }
-            catch (Exception ex)
+            catch (OperationCanceledException)
             {
-                MessageBox.Show("Error loading databases: " + ex.Message);
+                // ignore
             }
         }
 
-
-
-        private async Task LoadAllStoredProceduresAsync(CancellationToken cancellationToken)
+        // ================= LOAD STORED PROCEDURES =================
+        public async Task LoadStoredProceduresAsync(
+            List<string> databases,
+            CancellationToken token)
         {
-            string? connectionString = DbConnectionHelper.ConnectionString;
+            string cs = DbConnectionHelper.ConnectionString;
+            if (string.IsNullOrWhiteSpace(cs)) return;
 
-            if (string.IsNullOrWhiteSpace(connectionString))
+            DataTable table = new DataTable();
+            table.Columns.Add("DatabaseName");
+            table.Columns.Add("ProcedureName");
+            table.Columns.Add("CreateDate", typeof(DateTime));
+            table.Columns.Add("ModifyDate", typeof(DateTime));
+
+            using SqlConnection conn = new SqlConnection(cs);
+            await conn.OpenAsync(token);
+
+            foreach (string db in databases)
             {
-                MessageBox.Show("Connection string is missing.");
-                return;
-            }
-
-            DataTable resultTable = new DataTable();
-            resultTable.Columns.Add("DatabaseName", typeof(string));
-            resultTable.Columns.Add("ProcedureName", typeof(string));
-            resultTable.Columns.Add("CreateDate", typeof(DateTime));
-            resultTable.Columns.Add("ModifyDate", typeof(DateTime));
-
-            using (SqlConnection conn = new SqlConnection(connectionString))
-            {
-                await conn.OpenAsync(cancellationToken);
-
-                var dbNames = new List<string>();
-                using (SqlCommand cmd = new SqlCommand("SELECT name FROM sys.databases WHERE database_id > 4", conn))
-                using (SqlDataReader reader = await cmd.ExecuteReaderAsync(cancellationToken))
-                {
-                    while (await reader.ReadAsync(cancellationToken))
-                    {
-                        if (cancellationToken.IsCancellationRequested) return;
-                        dbNames.Add(reader.GetString(0));
-                    }
-                }
-
-                foreach (string dbName in dbNames)
-                {
-                    if (cancellationToken.IsCancellationRequested) return;
-
-                    try
-                    {
-                        conn.ChangeDatabase(dbName);
-
-                        string query = @"
-                    SELECT 
-                        @dbName AS DatabaseName,
-                        SCHEMA_NAME(p.schema_id) + '.' + p.name AS ProcedureName,
-                        p.create_date AS CreateDate,
-                        p.modify_date AS ModifyDate
-                    FROM sys.procedures p;";
-
-                        using SqlCommand cmd = new SqlCommand(query, conn);
-                        cmd.Parameters.AddWithValue("@dbName", dbName);
-
-                        using SqlDataAdapter da = new SqlDataAdapter(cmd);
-                        DataTable dt = new DataTable();
-                        da.Fill(dt);
-
-                        foreach (DataRow row in dt.Rows)
-                        {
-                            if (cancellationToken.IsCancellationRequested) return;
-
-                            DataRow newRow = resultTable.NewRow();
-                            newRow["DatabaseName"] = row["DatabaseName"];
-                            newRow["ProcedureName"] = row["ProcedureName"];
-                            newRow["CreateDate"] = row["CreateDate"];
-                            newRow["ModifyDate"] = row["ModifyDate"];
-                            //newRow["UsesAPI"] = "Loading...";
-                            resultTable.Rows.Add(newRow);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        //MessageBox.Show($"Error loading from DB '{dbName}': {ex.Message}");
-                    }
-                }
-            }
-
-            dataGridView1.DataSource = resultTable;
-
-            //await UpdateApiUsageAsync(resultTable, cancellationToken);
-        }
-
-        private async Task UpdateApiUsageAsync(DataTable spTable, CancellationToken cancellationToken)
-        {
-            string? connectionString = DbConnectionHelper.ConnectionString;
-            if (string.IsNullOrWhiteSpace(connectionString)) return;
-
-            using SqlConnection conn = new SqlConnection(connectionString);
-            await conn.OpenAsync(cancellationToken);
-
-            foreach (DataRow row in spTable.Rows)
-            {
-                if (cancellationToken.IsCancellationRequested) return;
-
-                string dbName = row["DatabaseName"].ToString() ?? "";
-                string procName = row["ProcedureName"].ToString() ?? "";
-
-                if (string.IsNullOrEmpty(dbName) || string.IsNullOrEmpty(procName)) continue;
+                token.ThrowIfCancellationRequested();
 
                 try
                 {
-                    conn.ChangeDatabase(dbName);
+                    conn.ChangeDatabase(db);
 
-                    string[] parts = procName.Split('.');
-                    if (parts.Length != 2) continue;
+                    string sql = @"
+                        SELECT
+                            @db AS DatabaseName,
+                            SCHEMA_NAME(schema_id) + '.' + name AS ProcedureName,
+                            create_date,
+                            modify_date
+                        FROM sys.procedures
+                        ORDER BY name";
 
-                    string schema = parts[0];
-                    string proc = parts[1];
+                    using SqlCommand cmd = new SqlCommand(sql, conn);
+                    cmd.Parameters.AddWithValue("@db", db);
 
-                    string query = @"
-                SELECT m.definition 
-                FROM sys.procedures p
-                INNER JOIN sys.sql_modules m ON p.object_id = m.object_id
-                WHERE SCHEMA_NAME(p.schema_id) = @schema AND p.name = @proc;";
+                    using SqlDataAdapter da = new SqlDataAdapter(cmd);
+                    DataTable dt = new DataTable();
+                    da.Fill(dt);
 
-                    using SqlCommand cmd = new SqlCommand(query, conn);
-                    cmd.Parameters.AddWithValue("@schema", schema);
-                    cmd.Parameters.AddWithValue("@proc", proc);
-
-                    string? definition = (string?)await cmd.ExecuteScalarAsync(cancellationToken);
-
-                    if (!string.IsNullOrEmpty(definition) &&
-                        (definition.Contains("http://", StringComparison.OrdinalIgnoreCase) ||
-                         definition.Contains("https://", StringComparison.OrdinalIgnoreCase)))
+                    foreach (DataRow r in dt.Rows)
                     {
-                        row["UsesAPI"] = "Yes";
-                    }
-                    else
-                    {
-                        row["UsesAPI"] = "No";
+                        table.Rows.Add(
+                            r["DatabaseName"],
+                            r["ProcedureName"],
+                            r["create_date"],
+                            r["modify_date"]
+                        );
                     }
                 }
                 catch
                 {
-                    row["UsesAPI"] = "Error";
+                    // optional logging
                 }
-
-                if (dataGridView1 != null && dataGridView1.IsHandleCreated && !dataGridView1.IsDisposed)
-                {
-                    try
-                    {
-                        dataGridView1.Invoke((Action)(() =>
-                        {
-                            dataGridView1.Refresh();
-                        }));
-                    }
-                    catch (ObjectDisposedException)
-                    {
-                        // Control already disposed, ignore
-                    }
-                }
-
             }
+
+            dataGridView1.DataSource = table;
         }
 
-        private void dataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
-        {
-           
-        }
-
-        private void frmStoreProcedureTracking_FormClosed(object sender, FormClosedEventArgs e)
-        {
-            _cancellationTokenSource.Cancel();
-        }
-
+        // ================= SEARCH =================
         private void textBox1_TextChanged(object sender, EventArgs e)
         {
             if (dataGridView1.DataSource is DataTable dt)
             {
                 string search = textBox1.Text.Trim().Replace("'", "''");
-
-                if (string.IsNullOrEmpty(search))
-                    dt.DefaultView.RowFilter = "";
-                else
-                    dt.DefaultView.RowFilter = $"ProcedureName LIKE '%{search}%'";
+                dt.DefaultView.RowFilter =
+                    string.IsNullOrEmpty(search)
+                        ? ""
+                        : $"ProcedureName LIKE '%{search}%'";
             }
         }
 
-
-
-        private void checkedListBoxDatabses_ItemCheck(object sender, ItemCheckEventArgs e)
-        {
-            // Cast sender to CheckedListBox type (not the control name)
-            CheckedListBox clb = sender as CheckedListBox;
-
-            List<string> checkedItems = new List<string>();
-
-            for (int i = 0; i < clb.Items.Count; i++)
-            {
-                if (i == e.Index)
-                {
-                    if (e.NewValue == CheckState.Checked)
-                    {
-                        checkedItems.Add(clb.Items[i].ToString());
-                    }
-                }
-                else
-                {
-                    if (clb.GetItemChecked(i))
-                    {
-                        checkedItems.Add(clb.Items[i].ToString());
-                    }
-                }
-            }
-
-
-        }
-
+        // ================= OPEN HELP TEXT =================
         private void button1_Click(object sender, EventArgs e)
         {
-            if (dataGridView1.SelectedRows.Count > 0)
+            if (dataGridView1.SelectedRows.Count == 0)
             {
-                DataGridViewRow selectedRow = dataGridView1.SelectedRows[0];
-
-                string dbName = selectedRow.Cells["DatabaseName"].Value?.ToString() ?? "";
-                string spName = selectedRow.Cells["ProcedureName"].Value?.ToString() ?? "";
-
-                // Open helptext form with these values
-                frmSpHelpText helptext = new frmSpHelpText
-                {
-                    DbName = dbName,
-                    SpName = spName
-                };
-
-                helptext.ShowDialog();
+                MessageBox.Show("Please select a stored procedure.");
+                return;
             }
-            else
+
+            DataGridViewRow row = dataGridView1.SelectedRows[0];
+
+            frmSpHelpText help = new frmSpHelpText
             {
-                MessageBox.Show("Please select a row first.");
-            }
+                DbName = row.Cells["DatabaseName"].Value.ToString(),
+                SpName = row.Cells["ProcedureName"].Value.ToString()
+            };
+
+            help.ShowDialog();
         }
 
+        // ================= FORM CLOSE =================
+        private void frmStoreProcedureTracking_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            _cts?.Cancel();
+        }
+
+        // ================= UNUSED EVENTS (SAFE EMPTY) =================
+        private void checkedListBoxDatabses_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            // intentionally empty
+        }
+
+        private void dataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            // intentionally empty
+        }
     }
 }

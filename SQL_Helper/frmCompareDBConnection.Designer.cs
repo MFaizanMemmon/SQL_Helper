@@ -36,16 +36,16 @@
             label3 = new Label();
             cmbTargetAuthentication = new ComboBox();
             label2 = new Label();
-            txtTargetServer = new TextBox();
             label1 = new Label();
             groupBox1 = new GroupBox();
+            cmbTargetServer = new ComboBox();
             txtTargetDatabase = new TextBox();
             label9 = new Label();
             groupBox2 = new GroupBox();
+            cmbCompareServer = new ComboBox();
             txtCompareDatabase = new TextBox();
             label10 = new Label();
             label5 = new Label();
-            txtCompareServerName = new TextBox();
             checkBox1 = new CheckBox();
             label6 = new Label();
             txtComparePassword = new TextBox();
@@ -142,15 +142,6 @@
             label2.TabIndex = 12;
             label2.Text = "Authentication";
             // 
-            // txtTargetServer
-            // 
-            txtTargetServer.Location = new Point(4, 48);
-            txtTargetServer.Margin = new Padding(2);
-            txtTargetServer.Name = "txtTargetServer";
-            txtTargetServer.PlaceholderText = "Please Enter Server";
-            txtTargetServer.Size = new Size(254, 23);
-            txtTargetServer.TabIndex = 11;
-            // 
             // label1
             // 
             label1.AutoSize = true;
@@ -163,10 +154,10 @@
             // 
             // groupBox1
             // 
+            groupBox1.Controls.Add(cmbTargetServer);
             groupBox1.Controls.Add(txtTargetDatabase);
             groupBox1.Controls.Add(label9);
             groupBox1.Controls.Add(label1);
-            groupBox1.Controls.Add(txtTargetServer);
             groupBox1.Controls.Add(chkTrustedCertificate);
             groupBox1.Controls.Add(label2);
             groupBox1.Controls.Add(txtTargetPassword);
@@ -182,6 +173,17 @@
             groupBox1.TabIndex = 20;
             groupBox1.TabStop = false;
             groupBox1.Text = "Target";
+            // 
+            // cmbTargetServer
+            // 
+            cmbTargetServer.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbTargetServer.FormattingEnabled = true;
+            cmbTargetServer.Location = new Point(4, 49);
+            cmbTargetServer.Margin = new Padding(2);
+            cmbTargetServer.Name = "cmbTargetServer";
+            cmbTargetServer.Size = new Size(254, 23);
+            cmbTargetServer.TabIndex = 21;
+            cmbTargetServer.SelectedIndexChanged += cmbTargetServer_SelectedIndexChanged;
             // 
             // txtTargetDatabase
             // 
@@ -207,10 +209,10 @@
             // 
             // groupBox2
             // 
+            groupBox2.Controls.Add(cmbCompareServer);
             groupBox2.Controls.Add(txtCompareDatabase);
             groupBox2.Controls.Add(label10);
             groupBox2.Controls.Add(label5);
-            groupBox2.Controls.Add(txtCompareServerName);
             groupBox2.Controls.Add(checkBox1);
             groupBox2.Controls.Add(label6);
             groupBox2.Controls.Add(txtComparePassword);
@@ -226,6 +228,17 @@
             groupBox2.TabIndex = 21;
             groupBox2.TabStop = false;
             groupBox2.Text = "Compare To";
+            // 
+            // cmbCompareServer
+            // 
+            cmbCompareServer.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbCompareServer.FormattingEnabled = true;
+            cmbCompareServer.Location = new Point(5, 49);
+            cmbCompareServer.Margin = new Padding(2);
+            cmbCompareServer.Name = "cmbCompareServer";
+            cmbCompareServer.Size = new Size(254, 23);
+            cmbCompareServer.TabIndex = 22;
+            cmbCompareServer.SelectedIndexChanged += cmbCompareServer_SelectedIndexChanged;
             // 
             // txtCompareDatabase
             // 
@@ -258,15 +271,6 @@
             label5.Size = new Size(42, 15);
             label5.TabIndex = 10;
             label5.Text = "Server ";
-            // 
-            // txtCompareServerName
-            // 
-            txtCompareServerName.Location = new Point(4, 48);
-            txtCompareServerName.Margin = new Padding(2);
-            txtCompareServerName.Name = "txtCompareServerName";
-            txtCompareServerName.PlaceholderText = "Please Enter Server";
-            txtCompareServerName.Size = new Size(254, 23);
-            txtCompareServerName.TabIndex = 11;
             // 
             // checkBox1
             // 
@@ -357,6 +361,7 @@
             Name = "frmCompareDBConnection";
             StartPosition = FormStartPosition.CenterScreen;
             Text = "Connections";
+            Load += frmCompareDBConnection_Load;
             groupBox1.ResumeLayout(false);
             groupBox1.PerformLayout();
             groupBox2.ResumeLayout(false);
@@ -374,12 +379,10 @@
         private Label label3;
         private ComboBox cmbTargetAuthentication;
         private Label label2;
-        private TextBox txtTargetServer;
         private Label label1;
         private GroupBox groupBox1;
         private GroupBox groupBox2;
         private Label label5;
-        private TextBox txtCompareServerName;
         private CheckBox checkBox1;
         private Label label6;
         private TextBox txtComparePassword;
@@ -391,5 +394,7 @@
         private Label label10;
         private TextBox txtTargetDatabase;
         private TextBox txtCompareDatabase;
+        private ComboBox cmbTargetServer;
+        private ComboBox cmbCompareServer;
     }
 }

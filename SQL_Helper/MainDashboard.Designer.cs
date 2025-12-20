@@ -33,18 +33,22 @@
             listBoxDB = new ListBox();
             dataGridViewDetail = new DataGridView();
             panel1 = new Panel();
+            btnTable = new Button();
             label1 = new Label();
             pictureBox4 = new PictureBox();
             lblTotalTable = new Label();
             panel2 = new Panel();
+            btnShowProcedures = new Button();
             lblTotalStorePrcedure = new Label();
             label4 = new Label();
             pictureBox3 = new PictureBox();
             panel3 = new Panel();
+            btnShowView = new Button();
             lblTotalViews = new Label();
             label6 = new Label();
             pictureBox2 = new PictureBox();
             panel4 = new Panel();
+            btnShowTriggers = new Button();
             lblTotalTrigger = new Label();
             label8 = new Label();
             pictureBox1 = new PictureBox();
@@ -55,25 +59,26 @@
             toolStripButton2 = new ToolStripButton();
             toolStripButton3 = new ToolStripSeparator();
             toolStripButton1 = new ToolStripButton();
+            toolStripSeparator4 = new ToolStripSeparator();
             toolStripSeparator1 = new ToolStripSeparator();
+            toolStripButton7 = new ToolStripButton();
             toolStripButton4 = new ToolStripButton();
             toolStripButton5 = new ToolStripButton();
             toolStripSeparator2 = new ToolStripSeparator();
             toolStripButton6 = new ToolStripButton();
             toolStripSeparator3 = new ToolStripSeparator();
             toolStripTextBox1 = new ToolStripTextBox();
-            toolStripSeparator4 = new ToolStripSeparator();
-            toolStripButton7 = new ToolStripButton();
             label2 = new Label();
             textBox1 = new TextBox();
             panel5 = new Panel();
+            btnShowTypes = new Button();
             label3 = new Label();
             label5 = new Label();
             pictureBox5 = new PictureBox();
             pictureBox6 = new PictureBox();
             panel6 = new Panel();
-            label7 = new Label();
             lblTotalRowsCount = new Label();
+            label7 = new Label();
             ((System.ComponentModel.ISupportInitialize)dataGridViewDetail).BeginInit();
             panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)pictureBox4).BeginInit();
@@ -129,6 +134,7 @@
             // panel1
             // 
             panel1.BackColor = Color.WhiteSmoke;
+            panel1.Controls.Add(btnTable);
             panel1.Controls.Add(label1);
             panel1.Controls.Add(pictureBox4);
             panel1.Controls.Add(lblTotalTable);
@@ -138,6 +144,17 @@
             panel1.Name = "panel1";
             panel1.Size = new Size(200, 60);
             panel1.TabIndex = 2;
+            panel1.Paint += panel1_Paint;
+            // 
+            // btnTable
+            // 
+            btnTable.Location = new Point(152, 34);
+            btnTable.Name = "btnTable";
+            btnTable.Size = new Size(45, 23);
+            btnTable.TabIndex = 3;
+            btnTable.Text = "Show";
+            btnTable.UseVisualStyleBackColor = true;
+            btnTable.Click += btnTable_Click;
             // 
             // label1
             // 
@@ -174,6 +191,7 @@
             // panel2
             // 
             panel2.BackColor = Color.WhiteSmoke;
+            panel2.Controls.Add(btnShowProcedures);
             panel2.Controls.Add(lblTotalStorePrcedure);
             panel2.Controls.Add(label4);
             panel2.Controls.Add(pictureBox3);
@@ -185,6 +203,16 @@
             panel2.TabIndex = 3;
             panel2.Click += panel2_Click;
             panel2.Paint += panel2_Paint;
+            // 
+            // btnShowProcedures
+            // 
+            btnShowProcedures.Location = new Point(152, 34);
+            btnShowProcedures.Name = "btnShowProcedures";
+            btnShowProcedures.Size = new Size(45, 23);
+            btnShowProcedures.TabIndex = 4;
+            btnShowProcedures.Text = "Show";
+            btnShowProcedures.UseVisualStyleBackColor = true;
+            btnShowProcedures.Click += btnShowProcedures_Click;
             // 
             // lblTotalStorePrcedure
             // 
@@ -223,6 +251,7 @@
             // panel3
             // 
             panel3.BackColor = Color.WhiteSmoke;
+            panel3.Controls.Add(btnShowView);
             panel3.Controls.Add(lblTotalViews);
             panel3.Controls.Add(label6);
             panel3.Controls.Add(pictureBox2);
@@ -233,6 +262,16 @@
             panel3.Size = new Size(200, 60);
             panel3.TabIndex = 4;
             panel3.Click += panel3_Click;
+            // 
+            // btnShowView
+            // 
+            btnShowView.Location = new Point(152, 33);
+            btnShowView.Name = "btnShowView";
+            btnShowView.Size = new Size(45, 23);
+            btnShowView.TabIndex = 10;
+            btnShowView.Text = "Show";
+            btnShowView.UseVisualStyleBackColor = true;
+            btnShowView.Click += btnShowView_Click;
             // 
             // lblTotalViews
             // 
@@ -270,6 +309,7 @@
             // panel4
             // 
             panel4.BackColor = Color.WhiteSmoke;
+            panel4.Controls.Add(btnShowTriggers);
             panel4.Controls.Add(lblTotalTrigger);
             panel4.Controls.Add(label8);
             panel4.Controls.Add(pictureBox1);
@@ -281,6 +321,16 @@
             panel4.TabIndex = 5;
             panel4.Click += panel4_Click;
             panel4.Paint += panel4_Paint;
+            // 
+            // btnShowTriggers
+            // 
+            btnShowTriggers.Location = new Point(152, 34);
+            btnShowTriggers.Name = "btnShowTriggers";
+            btnShowTriggers.Size = new Size(45, 23);
+            btnShowTriggers.TabIndex = 11;
+            btnShowTriggers.Text = "Show";
+            btnShowTriggers.UseVisualStyleBackColor = true;
+            btnShowTriggers.Click += btnShowTriggers_Click;
             // 
             // lblTotalTrigger
             // 
@@ -339,7 +389,7 @@
             // toolStrip1
             // 
             toolStrip1.ImageScalingSize = new Size(20, 20);
-            toolStrip1.Items.AddRange(new ToolStripItem[] { toolStripButton2, toolStripButton3, toolStripButton1, toolStripSeparator1, toolStripButton4, toolStripButton5, toolStripSeparator2, toolStripButton6, toolStripSeparator3, toolStripTextBox1, toolStripSeparator4, toolStripButton7 });
+            toolStrip1.Items.AddRange(new ToolStripItem[] { toolStripButton2, toolStripButton3, toolStripButton1, toolStripSeparator4, toolStripSeparator1, toolStripButton7, toolStripButton4, toolStripButton5, toolStripSeparator2, toolStripButton6, toolStripSeparator3, toolStripTextBox1 });
             toolStrip1.Location = new Point(0, 0);
             toolStrip1.Name = "toolStrip1";
             toolStrip1.Size = new Size(1222, 83);
@@ -351,7 +401,6 @@
             toolStripButton2.AutoSize = false;
             toolStripButton2.Enabled = false;
             toolStripButton2.Image = (Image)resources.GetObject("toolStripButton2.Image");
-            toolStripButton2.ImageScaling = ToolStripItemImageScaling.None;
             toolStripButton2.ImageTransparentColor = Color.Magenta;
             toolStripButton2.Name = "toolStripButton2";
             toolStripButton2.Size = new Size(120, 80);
@@ -370,7 +419,6 @@
             toolStripButton1.AutoSize = false;
             toolStripButton1.Enabled = false;
             toolStripButton1.Image = (Image)resources.GetObject("toolStripButton1.Image");
-            toolStripButton1.ImageScaling = ToolStripItemImageScaling.None;
             toolStripButton1.ImageTransparentColor = Color.Magenta;
             toolStripButton1.Name = "toolStripButton1";
             toolStripButton1.Size = new Size(120, 80);
@@ -378,17 +426,32 @@
             toolStripButton1.TextImageRelation = TextImageRelation.ImageAboveText;
             toolStripButton1.Click += toolStripButton1_Click;
             // 
+            // toolStripSeparator4
+            // 
+            toolStripSeparator4.Name = "toolStripSeparator4";
+            toolStripSeparator4.Size = new Size(6, 83);
+            // 
             // toolStripSeparator1
             // 
             toolStripSeparator1.Name = "toolStripSeparator1";
             toolStripSeparator1.Size = new Size(6, 83);
             toolStripSeparator1.Visible = false;
             // 
+            // toolStripButton7
+            // 
+            toolStripButton7.Enabled = false;
+            toolStripButton7.Image = (Image)resources.GetObject("toolStripButton7.Image");
+            toolStripButton7.ImageTransparentColor = Color.Magenta;
+            toolStripButton7.Name = "toolStripButton7";
+            toolStripButton7.Size = new Size(81, 80);
+            toolStripButton7.Text = "Dummy Data";
+            toolStripButton7.TextImageRelation = TextImageRelation.ImageAboveText;
+            toolStripButton7.Click += toolStripButton7_Click;
+            // 
             // toolStripButton4
             // 
             toolStripButton4.AutoSize = false;
             toolStripButton4.Image = (Image)resources.GetObject("toolStripButton4.Image");
-            toolStripButton4.ImageScaling = ToolStripItemImageScaling.None;
             toolStripButton4.ImageTransparentColor = Color.Magenta;
             toolStripButton4.Name = "toolStripButton4";
             toolStripButton4.Size = new Size(140, 80);
@@ -417,7 +480,6 @@
             // toolStripButton6
             // 
             toolStripButton6.Image = (Image)resources.GetObject("toolStripButton6.Image");
-            toolStripButton6.ImageScaling = ToolStripItemImageScaling.None;
             toolStripButton6.ImageTransparentColor = Color.Magenta;
             toolStripButton6.Name = "toolStripButton6";
             toolStripButton6.Size = new Size(152, 80);
@@ -438,21 +500,6 @@
             toolStripTextBox1.Text = "S_P X Ray";
             toolStripTextBox1.Visible = false;
             toolStripTextBox1.Click += toolStripTextBox1_Click;
-            // 
-            // toolStripSeparator4
-            // 
-            toolStripSeparator4.Name = "toolStripSeparator4";
-            toolStripSeparator4.Size = new Size(6, 83);
-            // 
-            // toolStripButton7
-            // 
-            toolStripButton7.Image = (Image)resources.GetObject("toolStripButton7.Image");
-            toolStripButton7.ImageTransparentColor = Color.Magenta;
-            toolStripButton7.Name = "toolStripButton7";
-            toolStripButton7.Size = new Size(81, 80);
-            toolStripButton7.Text = "Dummy Data";
-            toolStripButton7.TextImageRelation = TextImageRelation.ImageAboveText;
-            toolStripButton7.Click += toolStripButton7_Click;
             // 
             // label2
             // 
@@ -476,6 +523,7 @@
             // panel5
             // 
             panel5.BackColor = Color.WhiteSmoke;
+            panel5.Controls.Add(btnShowTypes);
             panel5.Controls.Add(label3);
             panel5.Controls.Add(label5);
             panel5.Controls.Add(pictureBox5);
@@ -485,6 +533,16 @@
             panel5.Name = "panel5";
             panel5.Size = new Size(200, 60);
             panel5.TabIndex = 6;
+            // 
+            // btnShowTypes
+            // 
+            btnShowTypes.Location = new Point(152, 33);
+            btnShowTypes.Name = "btnShowTypes";
+            btnShowTypes.Size = new Size(45, 23);
+            btnShowTypes.TabIndex = 12;
+            btnShowTypes.Text = "Show";
+            btnShowTypes.UseVisualStyleBackColor = true;
+            btnShowTypes.Click += btnShowTypes_Click;
             // 
             // label3
             // 
@@ -542,15 +600,6 @@
             panel6.Size = new Size(1222, 27);
             panel6.TabIndex = 10;
             // 
-            // label7
-            // 
-            label7.AutoSize = true;
-            label7.Location = new Point(6, 4);
-            label7.Name = "label7";
-            label7.Size = new Size(35, 15);
-            label7.TabIndex = 0;
-            label7.Text = "Rows";
-            // 
             // lblTotalRowsCount
             // 
             lblTotalRowsCount.AutoSize = true;
@@ -559,6 +608,15 @@
             lblTotalRowsCount.Size = new Size(13, 15);
             lblTotalRowsCount.TabIndex = 1;
             lblTotalRowsCount.Text = "0";
+            // 
+            // label7
+            // 
+            label7.AutoSize = true;
+            label7.Location = new Point(6, 4);
+            label7.Name = "label7";
+            label7.Size = new Size(35, 15);
+            label7.TabIndex = 0;
+            label7.Text = "Rows";
             // 
             // MainDashboard
             // 
@@ -656,5 +714,10 @@
         private Panel panel6;
         private Label label7;
         private Label lblTotalRowsCount;
+        private Button btnTable;
+        private Button btnShowProcedures;
+        private Button btnShowView;
+        private Button btnShowTriggers;
+        private Button btnShowTypes;
     }
 }

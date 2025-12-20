@@ -1,6 +1,7 @@
 ﻿using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
@@ -89,7 +90,7 @@ namespace SQL_Helper
             string targetConnStr, compareConnStr;
 
             bool targetOk = TryCreateConnectionString(
-                txtTargetServer.Text,
+               cmbTargetServer.SelectedItem?.ToString(),
                 "",
                 txtTargetUserName.Text,
                 txtTargetPassword.Text,
@@ -99,7 +100,7 @@ namespace SQL_Helper
             );
 
             bool compareOk = TryCreateConnectionString(
-                txtCompareServerName.Text,
+               cmbCompareServer.SelectedItem?.ToString(),
                 "",
                 txtCompareUserName.Text,
                 txtComparePassword.Text,
@@ -126,6 +127,97 @@ namespace SQL_Helper
             IsConnectSuccessfull = true;
             this.Close();
 
+        }
+
+        private void frmCompareDBConnection_Load(object sender, EventArgs e)
+        {
+
+
+            var connections = Properties.Settings.Default.SavedConnections ?? new StringCollection();
+
+            for (int i = 0; i < connections.Count; i++)
+            {
+                string conn = connections[i];
+                if (string.IsNullOrWhiteSpace(conn)) continue;
+
+                string[] parts = conn.Split('|');
+                if (parts.Length < 2) continue;
+
+                // Add each connection WITH its index
+                cmbCompareServer.Items.Add(new ServerItem
+                {
+                    Index = i,
+                    Server = parts[0]
+                });
+
+                cmbTargetServer.Items.Add(new ServerItem
+                {
+                    Index = i,
+                    Server = parts[0]
+                });
+            }
+        }
+
+        private void cmbTargetServer_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (cmbTargetServer.SelectedItem is not ServerItem item)
+                return;
+
+            var connections = Properties.Settings.Default.SavedConnections;
+            if (connections == null || item.Index >= connections.Count)
+                return;
+
+            string conn = connections[item.Index];
+            string[] parts = conn.Split('|');
+
+            string auth = parts.Length > 1 ? parts[1] : "";
+            string user = parts.Length > 2 ? parts[2] : "";
+            string pass = parts.Length > 3 ? parts[3] : "";
+
+            cmbTargetAuthentication.SelectedItem = auth;
+            txtTargetUserName.Text = user;
+            txtTargetPassword.Text = pass;
+
+            bool isWindowsAuth = auth == "Windows Authentication";
+            txtTargetUserName.ReadOnly = isWindowsAuth;
+            txtTargetPassword.ReadOnly = isWindowsAuth;
+
+            if (isWindowsAuth)
+            {
+                txtTargetUserName.Clear();
+                txtTargetPassword.Clear();
+            }
+        }
+
+        private void cmbCompareServer_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (cmbCompareServer.SelectedItem is not ServerItem item)
+                return;
+
+            var connections = Properties.Settings.Default.SavedConnections;
+            if (connections == null || item.Index >= connections.Count)
+                return;
+
+            string conn = connections[item.Index];
+            string[] parts = conn.Split('|');
+
+            string auth = parts.Length > 1 ? parts[1] : "";
+            string user = parts.Length > 2 ? parts[2] : "";
+            string pass = parts.Length > 3 ? parts[3] : "";
+
+            txtCompareAuthType.SelectedItem = auth;
+            txtCompareUserName.Text = user;
+            txtComparePassword.Text = pass;
+
+            bool isWindowsAuth = auth == "Windows Authentication";
+            txtCompareUserName.ReadOnly = isWindowsAuth;
+            txtComparePassword.ReadOnly = isWindowsAuth;
+
+            if (isWindowsAuth)
+            {
+                txtCompareUserName.Clear();
+                txtComparePassword.Clear();
+            }
         }
     }
 }

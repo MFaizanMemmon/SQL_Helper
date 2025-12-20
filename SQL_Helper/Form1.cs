@@ -15,20 +15,28 @@ namespace SQL_Helper
 
         private void frmConnectSQL_Load(object sender, EventArgs e)
         {
-
             cmbAuthentication.SelectedIndex = 0;
+            cmbServer.Items.Clear();
 
-            // Load saved server names
             var connections = Properties.Settings.Default.SavedConnections ?? new StringCollection();
-            foreach (string conn in connections)
+
+            for (int i = 0; i < connections.Count; i++)
             {
+                string conn = connections[i];
+                if (string.IsNullOrWhiteSpace(conn)) continue;
+
                 string[] parts = conn.Split('|');
-                if (parts.Length > 0 && !cmbServer.Items.Contains(parts[0]))
+                if (parts.Length < 2) continue;
+
+                // Add each connection WITH its index
+                cmbServer.Items.Add(new ServerItem
                 {
-                    cmbServer.Items.Add(parts[0]); // Just add Server Name
-                }
+                    Index = i,
+                    Server = parts[0]
+                });
             }
         }
+
 
         private void btnConnect_Click(object sender, EventArgs e)
         {
@@ -61,6 +69,7 @@ namespace SQL_Helper
                     // Save connection if not exists
                     string fullConn = $"{server}|{cmbAuthentication.SelectedItem}|{txtUserName.Text}|{txtPassword.Text}";
                     var savedConnections = Properties.Settings.Default.SavedConnections ?? new StringCollection();
+                    
                     if (!savedConnections.Contains(fullConn))
                     {
                         savedConnections.Add(fullConn);
@@ -154,25 +163,47 @@ namespace SQL_Helper
 
         private void cmbServer_SelectedIndexChanged_1(object sender, EventArgs e)
         {
-            string selectedServer = cmbServer.SelectedItem?.ToString();
-            var connections = Properties.Settings.Default.SavedConnections ?? new StringCollection();
+            if (cmbServer.SelectedItem is not ServerItem item)
+                return;
 
-            foreach (string conn in connections)
+            var connections = Properties.Settings.Default.SavedConnections;
+            if (connections == null || item.Index >= connections.Count)
+                return;
+
+            string conn = connections[item.Index];
+            string[] parts = conn.Split('|');
+
+            string auth = parts.Length > 1 ? parts[1] : "";
+            string user = parts.Length > 2 ? parts[2] : "";
+            string pass = parts.Length > 3 ? parts[3] : "";
+
+            cmbAuthentication.SelectedItem = auth;
+            txtUserName.Text = user;
+            txtPassword.Text = pass;
+
+            bool isWindowsAuth = auth == "Windows Authentication";
+            txtUserName.ReadOnly = isWindowsAuth;
+            txtPassword.ReadOnly = isWindowsAuth;
+
+            if (isWindowsAuth)
             {
-                string[] parts = conn.Split('|');
-                if (parts.Length == 4 && parts[0] == selectedServer)
-                {
-                    cmbAuthentication.SelectedItem = parts[1];
-                    txtUserName.Text = parts[2];
-                    txtPassword.Text = parts[3];
-
-                    txtUserName.ReadOnly = cmbAuthentication.SelectedItem.ToString() == "Windows Authentication";
-                    txtPassword.ReadOnly = cmbAuthentication.SelectedItem.ToString() == "Windows Authentication";
-                    break;
-                }
+                txtUserName.Clear();
+                txtPassword.Clear();
             }
         }
+
     }
+    class ServerItem
+    {
+        public int Index { get; set; }     // index in SavedConnections
+        public string Server { get; set; } // display text
+
+        public override string ToString()
+        {
+            return Server; // what ComboBox shows
+        }
+    }
+
 
 
 }
