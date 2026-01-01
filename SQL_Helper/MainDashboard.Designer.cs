@@ -75,7 +75,6 @@
             label3 = new Label();
             label5 = new Label();
             pictureBox5 = new PictureBox();
-            pictureBox6 = new PictureBox();
             panel6 = new Panel();
             lblTotalRowsCount = new Label();
             label7 = new Label();
@@ -92,7 +91,6 @@
             toolStrip1.SuspendLayout();
             panel5.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)pictureBox5).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)pictureBox6).BeginInit();
             panel6.SuspendLayout();
             SuspendLayout();
             // 
@@ -578,17 +576,6 @@
             pictureBox5.TabIndex = 9;
             pictureBox5.TabStop = false;
             // 
-            // pictureBox6
-            // 
-            pictureBox6.Image = (Image)resources.GetObject("pictureBox6.Image");
-            pictureBox6.Location = new Point(563, 281);
-            pictureBox6.Margin = new Padding(3, 2, 3, 2);
-            pictureBox6.Name = "pictureBox6";
-            pictureBox6.Size = new Size(234, 235);
-            pictureBox6.TabIndex = 9;
-            pictureBox6.TabStop = false;
-            pictureBox6.Visible = false;
-            // 
             // panel6
             // 
             panel6.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
@@ -625,7 +612,6 @@
             BackColor = SystemColors.ActiveCaption;
             ClientSize = new Size(1222, 711);
             Controls.Add(panel6);
-            Controls.Add(pictureBox6);
             Controls.Add(panel5);
             Controls.Add(textBox1);
             Controls.Add(label2);
@@ -636,6 +622,7 @@
             Controls.Add(panel1);
             Controls.Add(dataGridViewDetail);
             Controls.Add(listBoxDB);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Margin = new Padding(2);
             MaximizeBox = false;
             Name = "MainDashboard";
@@ -661,7 +648,6 @@
             panel5.ResumeLayout(false);
             panel5.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)pictureBox5).EndInit();
-            ((System.ComponentModel.ISupportInitialize)pictureBox6).EndInit();
             panel6.ResumeLayout(false);
             panel6.PerformLayout();
             ResumeLayout(false);
@@ -703,7 +689,6 @@
         private PictureBox pictureBox3;
         private PictureBox pictureBox4;
         private PictureBox pictureBox5;
-        private PictureBox pictureBox6;
         private ToolStripButton toolStripButton5;
         private ToolStripSeparator toolStripSeparator2;
         private ToolStripButton toolStripButton6;

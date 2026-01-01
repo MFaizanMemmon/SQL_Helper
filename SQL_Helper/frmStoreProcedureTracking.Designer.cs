@@ -33,10 +33,8 @@
             checkedListBoxDatabses = new CheckedListBox();
             label1 = new Label();
             textBox1 = new TextBox();
-            pictureBox1 = new PictureBox();
             button1 = new Button();
             ((System.ComponentModel.ISupportInitialize)dataGridView1).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)pictureBox1).BeginInit();
             SuspendLayout();
             // 
             // dataGridView1
@@ -88,16 +86,6 @@
             textBox1.TabIndex = 5;
             textBox1.TextChanged += textBox1_TextChanged;
             // 
-            // pictureBox1
-            // 
-            pictureBox1.Image = (Image)resources.GetObject("pictureBox1.Image");
-            pictureBox1.Location = new Point(476, 184);
-            pictureBox1.Margin = new Padding(3, 2, 3, 2);
-            pictureBox1.Name = "pictureBox1";
-            pictureBox1.Size = new Size(246, 230);
-            pictureBox1.TabIndex = 6;
-            pictureBox1.TabStop = false;
-            // 
             // button1
             // 
             button1.Anchor = AnchorStyles.Top | AnchorStyles.Right;
@@ -118,11 +106,11 @@
             BackColor = SystemColors.ActiveCaption;
             ClientSize = new Size(1006, 565);
             Controls.Add(button1);
-            Controls.Add(pictureBox1);
             Controls.Add(textBox1);
             Controls.Add(label1);
             Controls.Add(checkedListBoxDatabses);
             Controls.Add(dataGridView1);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Margin = new Padding(2);
             MaximizeBox = false;
             Name = "frmStoreProcedureTracking";
@@ -131,7 +119,6 @@
             FormClosed += frmStoreProcedureTracking_FormClosed;
             Load += frmStoreProcedureTracking_Load;
             ((System.ComponentModel.ISupportInitialize)dataGridView1).EndInit();
-            ((System.ComponentModel.ISupportInitialize)pictureBox1).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -141,7 +128,6 @@
         private CheckedListBox checkedListBoxDatabses;
         private Label label1;
         private TextBox textBox1;
-        private PictureBox pictureBox1;
         private Button button1;
     }
 }

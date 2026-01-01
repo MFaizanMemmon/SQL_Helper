@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(frmSelectCompareDatabase));
             groupBox1 = new GroupBox();
             button1 = new Button();
             comboBox2 = new ComboBox();
@@ -111,6 +112,7 @@
             BackColor = SystemColors.ActiveCaption;
             ClientSize = new Size(638, 164);
             Controls.Add(groupBox1);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Margin = new Padding(3, 2, 3, 2);
             MaximizeBox = false;
             MinimizeBox = false;

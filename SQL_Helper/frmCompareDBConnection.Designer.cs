@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(frmCompareDBConnection));
             btnConnect = new Button();
             chkTrustedCertificate = new CheckBox();
             txtTargetPassword = new TextBox();
@@ -355,6 +356,7 @@
             Controls.Add(groupBox2);
             Controls.Add(groupBox1);
             Controls.Add(btnConnect);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Margin = new Padding(3, 2, 3, 2);
             MaximizeBox = false;
             MinimizeBox = false;

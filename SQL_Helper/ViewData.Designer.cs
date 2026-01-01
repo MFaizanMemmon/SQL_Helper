@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ViewData));
             dataGridView1 = new DataGridView();
             btnExportExcel = new Button();
             BtnExportCSV = new Button();
@@ -44,7 +45,7 @@
             dataGridView1.BackgroundColor = Color.WhiteSmoke;
             dataGridView1.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             dataGridView1.Location = new Point(8, 46);
-            dataGridView1.Margin = new Padding(2, 2, 2, 2);
+            dataGridView1.Margin = new Padding(2);
             dataGridView1.Name = "dataGridView1";
             dataGridView1.RowHeadersWidth = 62;
             dataGridView1.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
@@ -55,7 +56,7 @@
             // 
             btnExportExcel.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             btnExportExcel.Location = new Point(939, 17);
-            btnExportExcel.Margin = new Padding(2, 2, 2, 2);
+            btnExportExcel.Margin = new Padding(2);
             btnExportExcel.Name = "btnExportExcel";
             btnExportExcel.Size = new Size(119, 20);
             btnExportExcel.TabIndex = 1;
@@ -67,7 +68,7 @@
             // 
             BtnExportCSV.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             BtnExportCSV.Location = new Point(816, 17);
-            BtnExportCSV.Margin = new Padding(2, 2, 2, 2);
+            BtnExportCSV.Margin = new Padding(2);
             BtnExportCSV.Name = "BtnExportCSV";
             BtnExportCSV.Size = new Size(119, 20);
             BtnExportCSV.TabIndex = 2;
@@ -88,7 +89,7 @@
             // textBox1
             // 
             textBox1.Location = new Point(57, 19);
-            textBox1.Margin = new Padding(2, 2, 2, 2);
+            textBox1.Margin = new Padding(2);
             textBox1.Name = "textBox1";
             textBox1.Size = new Size(383, 23);
             textBox1.TabIndex = 4;
@@ -105,7 +106,8 @@
             Controls.Add(BtnExportCSV);
             Controls.Add(btnExportExcel);
             Controls.Add(dataGridView1);
-            Margin = new Padding(2, 2, 2, 2);
+            Icon = (Icon)resources.GetObject("$this.Icon");
+            Margin = new Padding(2);
             MaximizeBox = false;
             Name = "ViewData";
             StartPosition = FormStartPosition.CenterScreen;

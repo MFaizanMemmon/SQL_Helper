@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(frmSpHelpText));
             richTextBox1 = new RichTextBox();
             button1 = new Button();
             button2 = new Button();
@@ -35,18 +36,20 @@
             // 
             // richTextBox1
             // 
-            richTextBox1.Location = new Point(12, 62);
+            richTextBox1.Location = new Point(8, 37);
+            richTextBox1.Margin = new Padding(2, 2, 2, 2);
             richTextBox1.Name = "richTextBox1";
-            richTextBox1.Size = new Size(1040, 587);
+            richTextBox1.Size = new Size(729, 354);
             richTextBox1.TabIndex = 0;
             richTextBox1.Text = "";
             // 
             // button1
             // 
             button1.Enabled = false;
-            button1.Location = new Point(940, 22);
+            button1.Location = new Point(658, 13);
+            button1.Margin = new Padding(2, 2, 2, 2);
             button1.Name = "button1";
-            button1.Size = new Size(112, 34);
+            button1.Size = new Size(78, 20);
             button1.TabIndex = 1;
             button1.Text = "Get Data";
             button1.UseVisualStyleBackColor = true;
@@ -54,9 +57,10 @@
             // 
             // button2
             // 
-            button2.Location = new Point(822, 22);
+            button2.Location = new Point(575, 13);
+            button2.Margin = new Padding(2, 2, 2, 2);
             button2.Name = "button2";
-            button2.Size = new Size(112, 34);
+            button2.Size = new Size(78, 20);
             button2.TabIndex = 2;
             button2.Text = "Get Table";
             button2.UseVisualStyleBackColor = true;
@@ -64,13 +68,15 @@
             // 
             // frmSpHelpText
             // 
-            AutoScaleDimensions = new SizeF(10F, 25F);
+            AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = SystemColors.ActiveCaption;
-            ClientSize = new Size(1064, 661);
+            ClientSize = new Size(745, 397);
             Controls.Add(button2);
             Controls.Add(button1);
             Controls.Add(richTextBox1);
+            Icon = (Icon)resources.GetObject("$this.Icon");
+            Margin = new Padding(2, 2, 2, 2);
             MaximizeBox = false;
             MinimizeBox = false;
             Name = "frmSpHelpText";

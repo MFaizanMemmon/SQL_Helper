@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(frmDummyData));
             groupBox1 = new GroupBox();
             btnViewSchema = new Button();
             cmbTable = new ComboBox();
@@ -144,6 +145,7 @@
             Controls.Add(label3);
             Controls.Add(pnlSchema);
             Controls.Add(groupBox1);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             MaximizeBox = false;
             MinimizeBox = false;
             Name = "frmDummyData";

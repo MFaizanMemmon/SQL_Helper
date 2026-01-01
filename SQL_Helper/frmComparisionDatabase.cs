@@ -131,8 +131,11 @@ namespace SQL_Helper
                 }
                 else
                 {
-                    var defChanged = spDb1[sp].Definition != spDb2[sp].Definition;
-                    var dateChanged = spDb1[sp].ModifiedDate > spDb2[sp].ModifiedDate;
+                    var defChanged =
+                            NormalizeSql(spDb1[sp].Definition) !=
+                            NormalizeSql(spDb2[sp].Definition);
+
+                    var dateChanged = spDb2[sp].ModifiedDate > spDb1[sp].ModifiedDate;
 
                     if (defChanged || dateChanged)
                     {
@@ -148,7 +151,58 @@ namespace SQL_Helper
             foreach (var sp in spDb2.Keys)
                 if (!spDb1.ContainsKey(sp))
                     _dtResults.Rows.Add(serverLabel2, dbName, "Stored Procedure", sp, $"Exists only in {serverLabel2}", null, spDb2[sp].ModifiedDate);
+
+            // --- Compare Functions ---
+            var fnDb1 = SafeGetFunctions(connStr1); // Dictionary<string, RoutineInfo>
+            var fnDb2 = SafeGetFunctions(connStr2);
+
+            foreach (var fn in fnDb1.Keys)
+            {
+                if (!fnDb2.ContainsKey(fn))
+                {
+                    _dtResults.Rows.Add(serverLabel1, dbName, "Function", fn, $"Exists only in {serverLabel1}", fnDb1[fn].ModifiedDate, null);
+                }
+                else
+                {
+                    var defChanged = NormalizeSql(fnDb1[fn].Definition) != NormalizeSql(fnDb2[fn].Definition);
+                    var dateChanged = fnDb2[fn].ModifiedDate > fnDb1[fn].ModifiedDate;
+
+                    if (defChanged || dateChanged)
+                    {
+                        var descParts = new List<string>();
+                        if (defChanged) descParts.Add("Definition differs");
+                        if (dateChanged) descParts.Add("Source modified later than Target");
+
+                        string desc = string.Join("; ", descParts);
+
+                        _dtResults.Rows.Add(serverLabel1, dbName, "Function", fn, desc, fnDb1[fn].ModifiedDate, fnDb2[fn].ModifiedDate);
+                    }
+                }
+            }
+
+            // Check for functions only in db2
+            foreach (var fn in fnDb2.Keys)
+            {
+                if (!fnDb1.ContainsKey(fn))
+                {
+                    _dtResults.Rows.Add(serverLabel2, dbName, "Function", fn, $"Exists only in {serverLabel2}", null, fnDb2[fn].ModifiedDate);
+                }
+            }
+
+
         }
+
+        private string NormalizeSql(string sql)
+        {
+            if (string.IsNullOrWhiteSpace(sql))
+                return string.Empty;
+
+            return System.Text.RegularExpressions.Regex
+                .Replace(sql, @"\s+", " ")
+                .Trim()
+                .ToUpperInvariant();
+        }
+
 
         private List<string> SafeGetTableList(string connStr)
         {
@@ -203,6 +257,44 @@ namespace SQL_Helper
             catch { }
             return dict;
         }
+
+        private Dictionary<string, (string Definition, DateTime? ModifiedDate)> SafeGetFunctions(string connStr)
+        {
+            var dict = new Dictionary<string, (string, DateTime?)>();
+
+            try
+            {
+                using var conn = new SqlConnection(connStr);
+                conn.Open();
+
+                using var cmd = new SqlCommand(@"
+            SELECT 
+                o.name, 
+                m.definition, 
+                o.modify_date
+            FROM sys.objects o
+            JOIN sys.sql_modules m ON o.object_id = m.object_id
+            WHERE o.type IN ('FN', 'IF', 'TF') -- Scalar, Inline Table-Valued, Table-Valued functions
+        ", conn);
+
+                using var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    var name = reader.GetString(0);
+                    var def = reader.IsDBNull(1) ? "" : reader.GetString(1);
+                    var modified = reader.IsDBNull(2) ? (DateTime?)null : reader.GetDateTime(2);
+
+                    dict[name] = (def, modified);
+                }
+            }
+            catch
+            {
+                // Optional: log error
+            }
+
+            return dict;
+        }
+
 
         private string ChangeDefaultDb(string connStr, string databaseName)
         {
@@ -309,4 +401,12 @@ namespace SQL_Helper
 
         }
     }
+
+    public class RoutineInfo
+    {
+        public string Definition { get; set; }
+        public DateTime ModifiedDate { get; set; }
+    }
+
+
 }

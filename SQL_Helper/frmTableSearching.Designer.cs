@@ -32,10 +32,8 @@
             label1 = new Label();
             textBox1 = new TextBox();
             dataGridView1 = new DataGridView();
-            pictureBox1 = new PictureBox();
             button1 = new Button();
             ((System.ComponentModel.ISupportInitialize)dataGridView1).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)pictureBox1).BeginInit();
             SuspendLayout();
             // 
             // label1
@@ -71,18 +69,8 @@
             dataGridView1.ReadOnly = true;
             dataGridView1.RowHeadersWidth = 51;
             dataGridView1.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dataGridView1.Size = new Size(969, 327);
+            dataGridView1.Size = new Size(969, 369);
             dataGridView1.TabIndex = 2;
-            // 
-            // pictureBox1
-            // 
-            pictureBox1.Image = (Image)resources.GetObject("pictureBox1.Image");
-            pictureBox1.Location = new Point(388, 96);
-            pictureBox1.Margin = new Padding(3, 2, 3, 2);
-            pictureBox1.Name = "pictureBox1";
-            pictureBox1.Size = new Size(252, 238);
-            pictureBox1.TabIndex = 3;
-            pictureBox1.TabStop = false;
             // 
             // button1
             // 
@@ -103,10 +91,10 @@
             BackColor = SystemColors.ActiveCaption;
             ClientSize = new Size(990, 429);
             Controls.Add(button1);
-            Controls.Add(pictureBox1);
             Controls.Add(dataGridView1);
             Controls.Add(textBox1);
             Controls.Add(label1);
+            Icon = (Icon)resources.GetObject("$this.Icon");
             Margin = new Padding(3, 2, 3, 2);
             MaximizeBox = false;
             Name = "frmTableSearching";
@@ -114,7 +102,6 @@
             Text = "Search Table";
             Load += frmTableSearching_Load;
             ((System.ComponentModel.ISupportInitialize)dataGridView1).EndInit();
-            ((System.ComponentModel.ISupportInitialize)pictureBox1).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -124,7 +111,6 @@
         private Label label1;
         private TextBox textBox1;
         private DataGridView dataGridView1;
-        private PictureBox pictureBox1;
         private Button button1;
     }
 }

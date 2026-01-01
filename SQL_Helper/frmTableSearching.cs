@@ -18,21 +18,21 @@ namespace SQL_Helper
 
         private async void frmTableSearching_Load(object sender, EventArgs e)
         {
-            CenterLoader();
-            pictureBox1.Visible = true;      // Show loader
+           // CenterLoader();
+            //pictureBox1.Visible = true;      // Show loader
             await LoadAllTablesInAllDatabases();  // Async load data
-            pictureBox1.Visible = false;     // Hide loader after load
+            //pictureBox1.Visible = false;     // Hide loader after load
         }
 
-        private void CenterLoader()
-        {
-            if (pictureBox1.Image == null)
-                return;
+        //private void CenterLoader()
+        //{
+        //    if (pictureBox1.Image == null)
+        //        return;
 
-            int x = (this.ClientSize.Width - pictureBox1.Width) / 2;
-            int y = (this.ClientSize.Height - pictureBox1.Height) / 2;
-            pictureBox1.Location = new Point(x, y);
-        }
+        //    int x = (this.ClientSize.Width - pictureBox1.Width) / 2;
+        //    int y = (this.ClientSize.Height - pictureBox1.Height) / 2;
+        //    pictureBox1.Location = new Point(x, y);
+        //}
         public async Task LoadAllTablesInAllDatabases()
         {
             try

@@ -3,6 +3,7 @@ using System.Collections.Specialized;
 using System.Linq;
 using System.Windows.Forms;
 using Microsoft.Data.SqlClient;
+using Microsoft.Office.Interop.Excel;
 
 namespace SQL_Helper
 {
@@ -69,7 +70,7 @@ namespace SQL_Helper
                     // Save connection if not exists
                     string fullConn = $"{server}|{cmbAuthentication.SelectedItem}|{txtUserName.Text}|{txtPassword.Text}";
                     var savedConnections = Properties.Settings.Default.SavedConnections ?? new StringCollection();
-                    
+
                     if (!savedConnections.Contains(fullConn))
                     {
                         savedConnections.Add(fullConn);
@@ -192,6 +193,12 @@ namespace SQL_Helper
             }
         }
 
+        private void lblLinkConnections_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            frmManageConnections mc = new frmManageConnections();
+            mc.ShowDialog();
+            frmConnectSQL_Load(null, null);
+        }
     }
     class ServerItem
     {

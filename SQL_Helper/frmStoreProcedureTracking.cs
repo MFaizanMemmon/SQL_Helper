@@ -23,21 +23,21 @@ namespace SQL_Helper
         {
             try
             {
-                pictureBox1.Visible = true;
+                //pictureBox1.Visible = true;
                 CenterLoader();
                 await LoadAllDatabasesAsync();
             }
             finally
             {
-                pictureBox1.Visible = false;
+                //pictureBox1.Visible = false;
             }
         }
 
         private void CenterLoader()
         {
-            pictureBox1.Left = (ClientSize.Width - pictureBox1.Width) / 2;
-            pictureBox1.Top = (ClientSize.Height - pictureBox1.Height) / 2;
-            pictureBox1.BringToFront();
+            //pictureBox1.Left = (ClientSize.Width - pictureBox1.Width) / 2;
+            //pictureBox1.Top = (ClientSize.Height - pictureBox1.Height) / 2;
+            //pictureBox1.BringToFront();
         }
 
         // ================= LOAD DATABASES =================
