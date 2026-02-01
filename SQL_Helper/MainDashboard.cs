@@ -505,17 +505,62 @@ namespace SQL_Helper
 
         private void textBox1_TextChanged(object sender, EventArgs e)
         {
-            if (databaseDetailTable == null || databaseDetailTable.Rows.Count == 0)
+            // Get current data source
+            var source = dataGridViewDetail.DataSource;
+
+            if (source == null)
                 return;
 
-            string filterText = textBox1.Text.Trim().Replace("'", "''");
+            // Extract DataTable from various source types
+            DataTable table = null;
 
-            DataView dv = new DataView(databaseDetailTable);
-            dv.RowFilter = $"SchemaName LIKE '%{filterText}%' OR TableName LIKE '%{filterText}%' OR TriggerNames LIKE '%{filterText}%' OR ParentTables LIKE '%{filterText}%' OR ChildTables LIKE '%{filterText}%'";
+            if (source is DataView dv)
+                table = dv.Table;
+            else if (source is DataTable dt)
+                table = dt;
 
-            dataGridViewDetail.DataSource = dv;
+            if (table == null || table.Rows.Count == 0)
+                return;
+
+            string filterText = textBox1.Text.Trim();
+
+            // Clear filter if search is empty
+            if (string.IsNullOrEmpty(filterText))
+            {
+                if (source is DataView originalView)
+                    originalView.RowFilter = "";
+                dataGridViewDetail.DataSource = source;
+                return;
+            }
+
+            // Escape for DataView filter
+            filterText = filterText.Replace("'", "''")
+                                  .Replace("[", "[[]")
+                                  .Replace("%", "[%]")
+                                  .Replace("_", "[_]");
+
+            // Build filter for ALL string columns
+            var stringColumns = new List<string>();
+            foreach (DataColumn col in table.Columns)
+            {
+                if (col.DataType == typeof(string))
+                {
+                    stringColumns.Add(col.ColumnName);
+                }
+            }
+
+            if (stringColumns.Count == 0)
+                return;
+
+            // Create the filter condition
+            string filter = string.Join(" OR ",
+                stringColumns.Select(col => $"[{col}] LIKE '%{filterText}%'"));
+
+            // Apply filter
+            DataView filteredView = new DataView(table);
+            filteredView.RowFilter = filter;
+            dataGridViewDetail.DataSource = filteredView;
         }
-
         private void toolStripButton4_Click(object sender, EventArgs e)
         {
            
@@ -614,7 +659,7 @@ namespace SQL_Helper
         }
 
 
-        private void btnShowView_Click(object sender, EventArgs e)
+        private async void btnShowView_Click(object sender, EventArgs e)
         {
             if (listBoxDB.SelectedItem == null)
             {
@@ -628,8 +673,52 @@ namespace SQL_Helper
             btnShowTriggers.BackColor = System.Drawing.Color.WhiteSmoke;
             btnShowTypes.BackColor = System.Drawing.Color.WhiteSmoke;
             dataGridViewDetail.DataSource = null;
-        }
 
+            string selectedDb = listBoxDB.SelectedItem.ToString();
+
+            try
+            {
+                this.Text = "Loading Views...";
+                this.Refresh();
+
+                // Load views data
+                string query = $@"
+            USE [{selectedDb}];
+            SELECT 
+                s.name AS SchemaName,
+                v.name AS ViewName,
+                v.create_date AS CreatedDate,
+                v.modify_date AS ModifiedDate
+            FROM sys.views v
+            INNER JOIN sys.schemas s ON v.schema_id = s.schema_id
+            ORDER BY s.name, v.name";
+
+                DataTable viewsTable = await ExecuteQueryAsync(query);
+                dataGridViewDetail.DataSource = viewsTable;
+
+                this.Text = "SQL Explorer - Views";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading views: {ex.Message}");
+                this.Text = "SQL Explorer";
+            }
+        }
+        private async Task<DataTable> ExecuteQueryAsync(string query)
+        {
+            string? connectionString = DbConnectionHelper.ConnectionString;
+            DataTable table = new DataTable();
+
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            using (SqlCommand cmd = new SqlCommand(query, conn))
+            using (SqlDataAdapter adapter = new SqlDataAdapter(cmd))
+            {
+                await conn.OpenAsync();
+                await Task.Run(() => adapter.Fill(table));
+            }
+
+            return table;
+        }
         private async void btnShowTriggers_Click(object sender, EventArgs e)
         {
             if (listBoxDB.SelectedItem == null)
@@ -658,7 +747,7 @@ namespace SQL_Helper
         }
 
 
-        private void btnShowTypes_Click(object sender, EventArgs e)
+        private async void btnShowTypes_Click(object sender, EventArgs e)
         {
             if (listBoxDB.SelectedItem == null)
             {
@@ -672,6 +761,40 @@ namespace SQL_Helper
             btnShowTriggers.BackColor = System.Drawing.Color.White;
             btnShowTypes.BackColor = System.Drawing.Color.LightBlue;
             dataGridViewDetail.DataSource = null;
+
+            string selectedDb = listBoxDB.SelectedItem.ToString();
+
+            try
+            {
+                this.Text = "Loading Types...";
+                this.Refresh();
+
+                // Load user-defined types data
+                string query = $@"
+            USE [{selectedDb}];
+            SELECT 
+                s.name AS SchemaName,
+                t.name AS TypeName,
+                t.is_user_defined AS IsUserDefined,
+                t.is_table_type AS IsTableType,
+                t.max_length AS MaxLength,
+                t.precision AS Precision,
+                t.scale AS Scale
+            FROM sys.types t
+            INNER JOIN sys.schemas s ON t.schema_id = s.schema_id
+            WHERE t.is_user_defined = 1
+            ORDER BY s.name, t.name";
+
+                DataTable typesTable = await ExecuteQueryAsync(query);
+                dataGridViewDetail.DataSource = typesTable;
+
+                this.Text = "SQL Explorer - Types";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading types: {ex.Message}");
+                this.Text = "SQL Explorer";
+            }
         }
 
         private async Task LoadProceduresForSingleDatabaseAsync(string databaseName)

@@ -6,7 +6,12 @@
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>sql-server (1).ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="sql-server (1).ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="ADGV" Version="0.1.0.10" />
