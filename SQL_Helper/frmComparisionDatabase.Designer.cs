@@ -34,6 +34,7 @@
             textBox1 = new TextBox();
             panel1 = new Panel();
             btnExportExcel = new Button();
+            btnGenereateScript = new Button();
             SuspendLayout();
             // 
             // button1
@@ -84,12 +85,24 @@
             btnExportExcel.UseVisualStyleBackColor = true;
             btnExportExcel.Click += btnExportExcel_Click;
             // 
+            // btnGenereateScript
+            // 
+            btnGenereateScript.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnGenereateScript.Location = new Point(858, 61);
+            btnGenereateScript.Name = "btnGenereateScript";
+            btnGenereateScript.Size = new Size(136, 23);
+            btnGenereateScript.TabIndex = 11;
+            btnGenereateScript.Text = "Generate Script";
+            btnGenereateScript.UseVisualStyleBackColor = true;
+            btnGenereateScript.Click += btnGenereateScript_Click;
+            // 
             // frmComparisionDatabase
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = SystemColors.ActiveCaption;
             ClientSize = new Size(1148, 597);
+            Controls.Add(btnGenereateScript);
             Controls.Add(btnExportExcel);
             Controls.Add(panel1);
             Controls.Add(textBox1);
@@ -114,5 +127,6 @@
         private TextBox textBox1;
         private Panel panel1;
         private Button btnExportExcel;
+        private Button btnGenereateScript;
     }
 }

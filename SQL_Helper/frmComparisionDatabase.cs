@@ -4,6 +4,7 @@ using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -90,16 +91,33 @@ namespace SQL_Helper
             dataGridView1.DataSource = _dvResults;
         }
 
-        private void CompareDatabases(string connStr1, string connStr2, string serverLabel1, string serverLabel2, string dbName)
+        private void CompareDatabases(
+     string connStr1,
+     string connStr2,
+     string serverLabel1,
+     string serverLabel2,
+     string dbName)
         {
             var tablesDb1 = SafeGetTableList(connStr1);
             var tablesDb2 = SafeGetTableList(connStr2);
 
+            string environmentName =
+                serverLabel1.Equals("Target", StringComparison.OrdinalIgnoreCase)
+                    ? "Production"
+                    : "Development";
+
+            string actualDbName =
+                environmentName.Equals("Development", StringComparison.OrdinalIgnoreCase)
+                    ? GetDatabaseNameFromConnectionString(connStr1)
+                    : GetDatabaseNameFromConnectionString(connStr2);
+
+            // --- Tables & Columns ---
             foreach (string table in tablesDb1)
             {
                 if (!tablesDb2.Contains(table))
                 {
-                    _dtResults.Rows.Add(serverLabel1, dbName, "Table", table, $"Table missing in {serverLabel2}", null, null);
+                    _dtResults.Rows.Add(environmentName, actualDbName, "Table", table,
+                        $"Table missing in {serverLabel2}", null, null);
                 }
                 else
                 {
@@ -108,18 +126,36 @@ namespace SQL_Helper
 
                     foreach (var col in colsDb1)
                         if (!colsDb2.Contains(col))
-                            _dtResults.Rows.Add(serverLabel1, dbName, "Column", $"{table}.{col}", $"Missing column in {serverLabel2}", null, null);
+                            _dtResults.Rows.Add(environmentName, actualDbName, "Column",
+                                $"{table}.{col}", $"Missing column in {serverLabel2}", null, null);
 
                     foreach (var col in colsDb2)
                         if (!colsDb1.Contains(col))
-                            _dtResults.Rows.Add(serverLabel2, dbName, "Column", $"{table}.{col}", $"Extra column in {serverLabel2}", null, null);
+                            _dtResults.Rows.Add(environmentName, actualDbName, "Column",
+                                $"{table}.{col}", $"Extra column in {serverLabel2}", null, null);
                 }
             }
 
             foreach (string table in tablesDb2)
                 if (!tablesDb1.Contains(table))
-                    _dtResults.Rows.Add(serverLabel2, dbName, "Table", table, $"Table missing in {serverLabel1}", null, null);
+                    _dtResults.Rows.Add(environmentName, actualDbName, "Table", table,
+                        $"Table missing in {environmentName}", null, null);
 
+            // --- Table Types ---
+            var ttDb1 = SafeGetTableTypes(connStr1);
+            var ttDb2 = SafeGetTableTypes(connStr2);
+
+            foreach (var tt in ttDb1)
+                if (!ttDb2.Contains(tt))
+                    _dtResults.Rows.Add(environmentName, actualDbName, "Table Type",
+                        tt, $"Table type missing in {serverLabel2}", null, null);
+
+            foreach (var tt in ttDb2)
+                if (!ttDb1.Contains(tt))
+                    _dtResults.Rows.Add(environmentName, actualDbName, "Table Type",
+                        tt, $"Table type missing in {serverLabel1}", null, null);
+
+            // --- Stored Procedures ---
             var spDb1 = SafeGetStoredProcedures(connStr1);
             var spDb2 = SafeGetStoredProcedures(connStr2);
 
@@ -127,15 +163,17 @@ namespace SQL_Helper
             {
                 if (!spDb2.ContainsKey(sp))
                 {
-                    _dtResults.Rows.Add(serverLabel1, dbName, "Stored Procedure", sp, $"Exists only in {serverLabel1}", spDb1[sp].ModifiedDate, null);
+                    _dtResults.Rows.Add(environmentName, actualDbName, "Stored Procedure",
+                        sp, $"Exists only in {environmentName}", spDb1[sp].ModifiedDate, null);
                 }
                 else
                 {
-                    var defChanged =
-                            NormalizeSql(spDb1[sp].Definition) !=
-                            NormalizeSql(spDb2[sp].Definition);
+                    bool defChanged =
+                        NormalizeSql(spDb1[sp].Definition) !=
+                        NormalizeSql(spDb2[sp].Definition);
 
-                    var dateChanged = spDb2[sp].ModifiedDate > spDb1[sp].ModifiedDate;
+                    bool dateChanged =
+                        spDb2[sp].ModifiedDate > spDb1[sp].ModifiedDate;
 
                     if (defChanged || dateChanged)
                     {
@@ -143,54 +181,85 @@ namespace SQL_Helper
                             ? "Definition differs."
                             : "Source modified later than Target.";
 
-                        _dtResults.Rows.Add(serverLabel1, dbName, "Stored Procedure", sp, desc, spDb1[sp].ModifiedDate, spDb2[sp].ModifiedDate);
+                        _dtResults.Rows.Add(environmentName, actualDbName, "Stored Procedure",
+                            sp, desc, spDb1[sp].ModifiedDate, spDb2[sp].ModifiedDate);
                     }
                 }
             }
 
             foreach (var sp in spDb2.Keys)
                 if (!spDb1.ContainsKey(sp))
-                    _dtResults.Rows.Add(serverLabel2, dbName, "Stored Procedure", sp, $"Exists only in {serverLabel2}", null, spDb2[sp].ModifiedDate);
+                    _dtResults.Rows.Add(environmentName, actualDbName, "Stored Procedure",
+                        sp, $"Exists only in {serverLabel2}", null, spDb2[sp].ModifiedDate);
 
-            // --- Compare Functions ---
-            var fnDb1 = SafeGetFunctions(connStr1); // Dictionary<string, RoutineInfo>
+            // --- Functions ---
+            var fnDb1 = SafeGetFunctions(connStr1);
             var fnDb2 = SafeGetFunctions(connStr2);
 
             foreach (var fn in fnDb1.Keys)
             {
                 if (!fnDb2.ContainsKey(fn))
                 {
-                    _dtResults.Rows.Add(serverLabel1, dbName, "Function", fn, $"Exists only in {serverLabel1}", fnDb1[fn].ModifiedDate, null);
+                    _dtResults.Rows.Add(environmentName, actualDbName, "Function",
+                        fn, $"Exists only in {serverLabel1}", fnDb1[fn].ModifiedDate, null);
                 }
                 else
                 {
-                    var defChanged = NormalizeSql(fnDb1[fn].Definition) != NormalizeSql(fnDb2[fn].Definition);
-                    var dateChanged = fnDb2[fn].ModifiedDate > fnDb1[fn].ModifiedDate;
+                    bool defChanged =
+                        NormalizeSql(fnDb1[fn].Definition) !=
+                        NormalizeSql(fnDb2[fn].Definition);
+
+                    bool dateChanged =
+                        fnDb2[fn].ModifiedDate > fnDb1[fn].ModifiedDate;
 
                     if (defChanged || dateChanged)
                     {
-                        var descParts = new List<string>();
-                        if (defChanged) descParts.Add("Definition differs");
-                        if (dateChanged) descParts.Add("Source modified later than Target");
+                        var desc = new List<string>();
+                        if (defChanged) desc.Add("Definition differs");
+                        if (dateChanged) desc.Add("Source modified later than Target");
 
-                        string desc = string.Join("; ", descParts);
-
-                        _dtResults.Rows.Add(serverLabel1, dbName, "Function", fn, desc, fnDb1[fn].ModifiedDate, fnDb2[fn].ModifiedDate);
+                        _dtResults.Rows.Add(environmentName, actualDbName, "Function",
+                            fn, string.Join("; ", desc),
+                            fnDb1[fn].ModifiedDate, fnDb2[fn].ModifiedDate);
                     }
                 }
             }
 
-            // Check for functions only in db2
             foreach (var fn in fnDb2.Keys)
-            {
                 if (!fnDb1.ContainsKey(fn))
-                {
-                    _dtResults.Rows.Add(serverLabel2, dbName, "Function", fn, $"Exists only in {serverLabel2}", null, fnDb2[fn].ModifiedDate);
-                }
-            }
-
-
+                    _dtResults.Rows.Add(environmentName, actualDbName, "Function",
+                        fn, $"Exists only in {serverLabel2}", null, fnDb2[fn].ModifiedDate);
         }
+
+
+        private HashSet<string> SafeGetTableTypes(string connectionString)
+        {
+            var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            using var conn = new SqlConnection(connectionString);
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+        SELECT name
+        FROM sys.types
+        WHERE is_table_type = 1
+        ORDER BY name";
+
+            conn.Open();
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+                result.Add(reader.GetString(0));
+
+            return result;
+        }
+
+
+        private string GetDatabaseNameFromConnectionString(string connectionString)  
+        {
+            var builder = new SqlConnectionStringBuilder(connectionString);
+            return builder.InitialCatalog;
+        }
+
+
 
         private string NormalizeSql(string sql)
         {
@@ -400,13 +469,36 @@ namespace SQL_Helper
         {
 
         }
+
+        private void btnGenereateScript_Click(object sender, EventArgs e)
+        {
+            var result = MessageBox.Show(
+                "This will generate scripts for all differences. It may take some time depending on the number of differences. Do you want to proceed?",
+                "Generate Scripts",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (result != DialogResult.Yes)
+                return;
+
+            using (var frm = new frmGenerateScript())
+            {
+                frm.SourceGrid = dataGridView1;
+                frm.ProductionDatabase = GetDatabaseNameFromConnectionString(DbConnectionHelper.TargetConnectionString);
+                frm.DevelopmentDatabase = GetDatabaseNameFromConnectionString(DbConnectionHelper.CompareToConnectionString);
+                frm.ProductionConnectionString = DbConnectionHelper.TargetConnectionString;
+                frm.DevelopmentConnectionString = DbConnectionHelper.CompareToConnectionString;
+                frm.ShowDialog(this);
+            }
+        }
+
+
+
+        public class RoutineInfo
+        {
+            public string Definition { get; set; }
+            public DateTime ModifiedDate { get; set; }
+        }
+
     }
-
-    public class RoutineInfo
-    {
-        public string Definition { get; set; }
-        public DateTime ModifiedDate { get; set; }
-    }
-
-
 }

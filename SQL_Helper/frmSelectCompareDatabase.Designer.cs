@@ -92,18 +92,18 @@
             label2.AutoSize = true;
             label2.Location = new Point(332, 37);
             label2.Name = "label2";
-            label2.Size = new Size(94, 15);
+            label2.Size = new Size(117, 15);
             label2.TabIndex = 1;
-            label2.Text = "Source Database";
+            label2.Text = "Production Database";
             // 
             // label1
             // 
             label1.AutoSize = true;
             label1.Location = new Point(32, 37);
             label1.Name = "label1";
-            label1.Size = new Size(91, 15);
+            label1.Size = new Size(129, 15);
             label1.TabIndex = 0;
-            label1.Text = "Target Database";
+            label1.Text = "Development Database";
             // 
             // frmSelectCompareDatabase
             // 

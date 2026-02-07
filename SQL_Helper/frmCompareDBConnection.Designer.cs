@@ -173,7 +173,7 @@
             groupBox1.Size = new Size(279, 269);
             groupBox1.TabIndex = 20;
             groupBox1.TabStop = false;
-            groupBox1.Text = "Target";
+            groupBox1.Text = "Developement Server";
             // 
             // cmbTargetServer
             // 
@@ -228,7 +228,7 @@
             groupBox2.Size = new Size(271, 269);
             groupBox2.TabIndex = 21;
             groupBox2.TabStop = false;
-            groupBox2.Text = "Compare To";
+            groupBox2.Text = "Production Server";
             // 
             // cmbCompareServer
             // 
