@@ -1,4 +1,4 @@
-﻿namespace SQL_Helper
+namespace SQL_Helper
 {
     partial class MainDashboard
     {
@@ -62,7 +62,6 @@
             toolStripSeparator4 = new ToolStripSeparator();
             toolStripSeparator1 = new ToolStripSeparator();
             toolStripButton7 = new ToolStripButton();
-            toolStripButton4 = new ToolStripButton();
             toolStripButton5 = new ToolStripButton();
             toolStripSeparator2 = new ToolStripSeparator();
             toolStripButton6 = new ToolStripButton();
@@ -387,7 +386,7 @@
             // toolStrip1
             // 
             toolStrip1.ImageScalingSize = new Size(20, 20);
-            toolStrip1.Items.AddRange(new ToolStripItem[] { toolStripButton2, toolStripButton3, toolStripButton1, toolStripSeparator4, toolStripSeparator1, toolStripButton7, toolStripButton4, toolStripButton5, toolStripSeparator2, toolStripButton6, toolStripSeparator3, toolStripTextBox1 });
+            toolStrip1.Items.AddRange(new ToolStripItem[] { toolStripButton2, toolStripButton3, toolStripButton1, toolStripSeparator4, toolStripSeparator1, toolStripButton7, toolStripButton5, toolStripSeparator2, toolStripButton6, toolStripSeparator3, toolStripTextBox1 });
             toolStrip1.Location = new Point(0, 0);
             toolStrip1.Name = "toolStrip1";
             toolStrip1.Size = new Size(1222, 83);
@@ -445,19 +444,6 @@
             toolStripButton7.Text = "Dummy Data";
             toolStripButton7.TextImageRelation = TextImageRelation.ImageAboveText;
             toolStripButton7.Click += toolStripButton7_Click;
-            // 
-            // toolStripButton4
-            // 
-            toolStripButton4.AutoSize = false;
-            toolStripButton4.Image = (Image)resources.GetObject("toolStripButton4.Image");
-            toolStripButton4.ImageTransparentColor = Color.Magenta;
-            toolStripButton4.Name = "toolStripButton4";
-            toolStripButton4.Size = new Size(140, 80);
-            toolStripButton4.Text = "Upload POS Worker";
-            toolStripButton4.TextImageRelation = TextImageRelation.ImageAboveText;
-            toolStripButton4.Visible = false;
-            toolStripButton4.Click += toolStripButton4_Click;
-            // 
             // toolStripButton5
             // 
             toolStripButton5.Alignment = ToolStripItemAlignment.Right;
@@ -683,7 +669,6 @@
         private Label label3;
         private Label label5;
         private ToolStripSeparator toolStripSeparator1;
-        private ToolStripButton toolStripButton4;
         private PictureBox pictureBox1;
         private PictureBox pictureBox2;
         private PictureBox pictureBox3;

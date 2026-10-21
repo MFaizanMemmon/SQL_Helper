@@ -1,740 +1,86 @@
-﻿using ClosedXML.Excel;
-using Microsoft.Data.SqlClient;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
 using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-
-namespace SQL_Helper
+namespace SQL_Helper;
+public partial class frmDummyData : Form
 {
-    public partial class frmDummyData : Form
+    private readonly DataGridView settings = new() { Dock = DockStyle.Fill };
+    private readonly CancellationTokenSource lifetime = new();
+    private CancellationTokenSource? operation;
+    private SampleSchema? schema;
+    private readonly Button cancel = new() { Text = "Cancel insertion", Dock = DockStyle.Bottom, Enabled = false, Height = 36 };
+    public frmDummyData()
     {
-        private static readonly Random _random = new Random();
-
-
-
-        public frmDummyData()
-        {
-            InitializeComponent();
-        }
-
-
-        public int GetRandomNumber(int start, int end)
-        {
-            if (start > end)
-            {
-                MessageBox.Show("Start must be less than or equal to End.");
-                return 0;
-            }
-
-            return _random.Next(start, end + 1);
-        }
-
-        /// <summary>
-        /// Generates random data based on a given format.
-        /// Use:
-        ///   # = digit (0-9)
-        ///   A = uppercase letter (A-Z)
-        ///   a = lowercase letter (a-z)
-        ///   * = letter or digit
-        /// Any other character will be kept as-is.
-        /// </summary>
-        public string GenerateRandomByFormat(string format)
-        {
-            StringBuilder result = new StringBuilder();
-
-            foreach (char c in format)
-            {
-                switch (c)
-                {
-                    case '#': // Digit
-                        result.Append(_random.Next(0, 10));
-                        break;
-
-                    case 'A': // Uppercase letter
-                        result.Append((char)_random.Next('A', 'Z' + 1));
-                        break;
-
-                    case 'a': // Lowercase letter
-                        result.Append((char)_random.Next('a', 'z' + 1));
-                        break;
-
-                    case '*': // Letter or digit
-                        int choice = _random.Next(0, 3);
-                        if (choice == 0)
-                            result.Append(_random.Next(0, 10));
-                        else if (choice == 1)
-                            result.Append((char)_random.Next('A', 'Z' + 1));
-                        else
-                            result.Append((char)_random.Next('a', 'z' + 1));
-                        break;
-
-                    default: // Keep original symbol
-                        result.Append(c);
-                        break;
-                }
-            }
-
-            return result.ToString();
-        }
-
-        private void frmDummyData_Load(object sender, EventArgs e)
-        {
-            LoadDatabases();
-        }
-
-        private void LoadDatabases()
-        {
-            string? connectionString = DbConnectionHelper.ConnectionString?.ToString();
-            string query = "SELECT name FROM sys.databases WHERE database_id > 4";
-
-            using (SqlConnection con = new SqlConnection(connectionString))
-            using (SqlCommand cmd = new SqlCommand(query, con))
-            {
-                try
-                {
-                    con.Open();
-                    using (SqlDataReader reader = cmd.ExecuteReader())
-                    {
-                        cmbDatabaes.Items.Clear();
-                        while (reader.Read())
-                        {
-                            cmbDatabaes.Items.Add(reader["name"].ToString());
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("Error loading databases: " + ex.Message);
-                }
-            }
-        }
-
-        private void LoadTables(string databaseName)
-        {
-            string? baseConnectionString = DbConnectionHelper.ConnectionString;
-
-            if (string.IsNullOrWhiteSpace(baseConnectionString))
-            {
-                MessageBox.Show("Connection string is missing.");
-                return;
-            }
-
-            SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder(baseConnectionString)
-            {
-                InitialCatalog = databaseName
-            };
-
-            string query = "SELECT s.name + '.' + t.name AS TableName " +
-                           "FROM sys.tables t " +
-                           "INNER JOIN sys.schemas s ON t.schema_id = s.schema_id " +
-                           "ORDER BY s.name, t.name";
-
-            try
-            {
-                using SqlConnection con = new SqlConnection(builder.ToString());
-                using SqlCommand cmd = new SqlCommand(query, con);
-                con.Open();
-
-                using SqlDataReader reader = cmd.ExecuteReader();
-                cmbTable.Items.Clear();
-
-                while (reader.Read())
-                {
-                    cmbTable.Items.Add(reader["TableName"].ToString());
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Error loading tables: " + ex.Message);
-            }
-        }
-
-        private void cmbDatabaes_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            if (cmbDatabaes.SelectedItem != null)
-            {
-                string selectedDb = cmbDatabaes.SelectedItem.ToString();
-                LoadTables(selectedDb);
-
-            }
-        }
-
-        private void btnViewSchema_Click(object sender, EventArgs e)
-        {
-            if (cmbDatabaes.SelectedItem == null || cmbTable.SelectedItem == null)
-            {
-                MessageBox.Show("Please select a database and a table.");
-                return;
-            }
-
-            string databaseName = cmbDatabaes.SelectedItem.ToString();
-            string tableName = cmbTable.SelectedItem.ToString();
-
-            string? baseConnectionString = DbConnectionHelper.ConnectionString;
-            SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder(baseConnectionString)
-            {
-                InitialCatalog = databaseName
-            };
-
-            string columnQuery = @"
-SELECT 
-    c.COLUMN_NAME, 
-    c.DATA_TYPE, 
-    c.IS_NULLABLE, 
-    c.CHARACTER_MAXIMUM_LENGTH,
-    COLUMNPROPERTY(OBJECT_ID(c.TABLE_SCHEMA + '.' + c.TABLE_NAME), c.COLUMN_NAME, 'IsIdentity') AS IS_IDENTITY
-FROM INFORMATION_SCHEMA.COLUMNS c
-WHERE c.TABLE_NAME = @TableName
-ORDER BY c.ORDINAL_POSITION;
-";
-
-
-            string pkQuery = @"
-        SELECT kcu.COLUMN_NAME
-        FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
-        INNER JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
-            ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
-        WHERE tc.TABLE_NAME = @TableName AND tc.CONSTRAINT_TYPE = 'PRIMARY KEY';
-    ";
-
-            string fkQuery = @"
-        SELECT 
-            COL_NAME(fc.parent_object_id, fc.parent_column_id) AS ColumnName,
-            OBJECT_NAME(fk.referenced_object_id) AS ReferencedTable,
-            COL_NAME(fc.referenced_object_id, fc.referenced_column_id) AS ReferencedColumn
-        FROM sys.foreign_keys fk
-        INNER JOIN sys.foreign_key_columns fc 
-            ON fk.object_id = fc.constraint_object_id
-        WHERE fk.parent_object_id = OBJECT_ID(@TableName);
-    ";
-
-            try
-            {
-                using SqlConnection con = new SqlConnection(builder.ToString());
-                con.Open();
-
-                pnlSchema.Controls.Clear(); // Clear old schema view
-                int y = 10;
-
-                // 1️⃣ Load Primary Keys
-                HashSet<string> primaryKeys = new HashSet<string>();
-                using (SqlCommand pkCmd = new SqlCommand(pkQuery, con))
-                {
-                    pkCmd.Parameters.AddWithValue("@TableName", tableName.Contains('.') ? tableName.Split('.')[1] : tableName);
-                    using SqlDataReader pkReader = pkCmd.ExecuteReader();
-                    while (pkReader.Read())
-                    {
-                        primaryKeys.Add(pkReader["COLUMN_NAME"].ToString());
-                    }
-                }
-
-                // 2️⃣ Load Foreign Keys into dictionary
-                Dictionary<string, (string RefTable, string RefColumn)> foreignKeys = new();
-                using (SqlCommand fkCmd = new SqlCommand(fkQuery, con))
-                {
-                    fkCmd.Parameters.AddWithValue("@TableName", tableName.Contains('.') ? tableName.Split('.')[1] : tableName);
-                    using SqlDataReader fkReader = fkCmd.ExecuteReader();
-                    while (fkReader.Read())
-                    {
-                        string col = fkReader["ColumnName"].ToString();
-                        string refTable = fkReader["ReferencedTable"].ToString();
-                        string refColumn = fkReader["ReferencedColumn"].ToString();
-                        foreignKeys[col] = (refTable, refColumn);
-                    }
-                }
-
-                // 3️⃣ Load Columns and show FK inline
-                using (SqlCommand cmd = new SqlCommand(columnQuery, con))
-                {
-                    cmd.Parameters.AddWithValue("@TableName", tableName.Contains('.') ? tableName.Split('.')[1] : tableName);
-
-                    using SqlDataReader reader = cmd.ExecuteReader();
-                    Label header = new Label
-                    {
-                        Text = "Columns:",
-                        Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                        AutoSize = true,
-                        Location = new Point(10, y)
-                    };
-                    pnlSchema.Controls.Add(header);
-                    y += 25;
-
-                    while (reader.Read())
-                    {
-                        string columnName = reader["COLUMN_NAME"].ToString();
-                        string dataType = reader["DATA_TYPE"].ToString();
-                        string isNullable = reader["IS_NULLABLE"].ToString();
-                        string length = reader["CHARACTER_MAXIMUM_LENGTH"] != DBNull.Value
-                                        ? reader["CHARACTER_MAXIMUM_LENGTH"].ToString()
-                                        : "";
-
-                        bool isForeignKey = false;
-                        bool isPrimaryKey = primaryKeys.Contains(columnName);
-                        bool isIdentity = reader["IS_IDENTITY"] != DBNull.Value && Convert.ToInt32(reader["IS_IDENTITY"]) == 1;
-
-
-                        string pkMark = isPrimaryKey ? " [PK]" : "";
-
-                        // Column Label
-                        Label lbl = new Label
-                        {
-                            Text = $"{columnName} ({dataType}{(string.IsNullOrEmpty(length) ? "" : $"({length})")}){pkMark}",
-                            AutoSize = true,
-                            Location = new Point(20, y),
-                            Font = new Font("Segoe UI", 9, FontStyle.Regular)
-                        };
-
-                        if (isIdentity)
-                        {
-                            y += 25;
-                            continue;
-                        }
-
-                        pnlSchema.Controls.Add(lbl);
-
-                        int nextX = lbl.Right + 10;
-
-                        // If column has FK → show two ComboBoxes
-                        if (foreignKeys.ContainsKey(columnName))
-                        {
-                            var fkInfo = foreignKeys[columnName];
-
-                            ComboBox cmbStartFK = new ComboBox
-                            {
-                                Width = 150,
-                                Location = new Point(nextX, y - 2),
-                                DropDownStyle = ComboBoxStyle.DropDownList,
-                                Tag = fkInfo
-                            };
-
-                            ComboBox cmbEndFK = new ComboBox
-                            {
-                                Width = 150,
-                                Location = new Point(cmbStartFK.Right + 5, y - 2),
-                                DropDownStyle = ComboBoxStyle.DropDownList,
-                                Tag = fkInfo
-                            };
-
-                            using (SqlConnection fkConn = new SqlConnection(builder.ToString()))
-                            {
-                                fkConn.Open();
-                                string sql = $"SELECT DISTINCT [{fkInfo.RefColumn}] FROM [{fkInfo.RefTable}] ORDER BY [{fkInfo.RefColumn}]";
-                                using (SqlCommand fkCmd = new SqlCommand(sql, fkConn))
-                                using (SqlDataReader fkReader = fkCmd.ExecuteReader())
-                                {
-                                    while (fkReader.Read())
-                                    {
-                                        string value = fkReader[0].ToString();
-                                        cmbStartFK.Items.Add(value);
-                                        cmbEndFK.Items.Add(value);
-                                    }
-                                }
-                            }
-
-                            if (cmbStartFK.Items.Count > 0) cmbStartFK.SelectedIndex = 0;
-                            if (cmbEndFK.Items.Count > 0) cmbEndFK.SelectedIndex = cmbEndFK.Items.Count - 1;
-
-                            pnlSchema.Controls.Add(cmbStartFK);
-                            pnlSchema.Controls.Add(cmbEndFK);
-
-                            nextX = cmbEndFK.Right + 10;
-                            isForeignKey = true;
-                        }
-
-                        // ✅ INT range
-                        if ((dataType.Equals("int", StringComparison.OrdinalIgnoreCase)
-                                 || dataType.Equals("decimal", StringComparison.OrdinalIgnoreCase))
-                                && !isPrimaryKey && !isForeignKey)
-                        {
-                            TextBox txtStart = new TextBox
-                            {
-                                Width = 60,
-                                Location = new Point(nextX, y - 2),
-                                PlaceholderText = "Start"
-                            };
-
-                            TextBox txtEnd = new TextBox
-                            {
-                                Width = 60,
-                                Location = new Point(txtStart.Right + 5, y - 2),
-                                PlaceholderText = "End"
-                            };
-
-                            pnlSchema.Controls.Add(txtStart);
-                            pnlSchema.Controls.Add(txtEnd);
-                            nextX = txtEnd.Right + 10;
-                        }
-
-                        if (dataType.Equals("bit", StringComparison.OrdinalIgnoreCase))
-                        {
-                            TextBox txtPercentage = new TextBox
-                            {
-                                Width = 100,
-                                Location = new Point(nextX, y - 2),
-                                PlaceholderText = "Percentage of True"
-                            };
-
-                            pnlSchema.Controls.Add(txtPercentage);
-                            nextX = txtPercentage.Right + 10;
-                        }
-
-                        // ✅ DATE range
-                        if ((dataType.Equals("date", StringComparison.OrdinalIgnoreCase) ||
-                             dataType.Equals("datetime", StringComparison.OrdinalIgnoreCase) ||
-                             dataType.Equals("datetime2", StringComparison.OrdinalIgnoreCase) ||
-                             dataType.Equals("smalldatetime", StringComparison.OrdinalIgnoreCase))
-                             && !isPrimaryKey)
-                        {
-                            DateTimePicker dpStart = new DateTimePicker
-                            {
-                                Format = DateTimePickerFormat.Short,
-                                Width = 120,
-                                Location = new Point(nextX, y - 2)
-                            };
-
-                            DateTimePicker dpEnd = new DateTimePicker
-                            {
-                                Format = DateTimePickerFormat.Short,
-                                Width = 120,
-                                Location = new Point(dpStart.Right + 5, y - 2)
-                            };
-
-                            pnlSchema.Controls.Add(dpStart);
-                            pnlSchema.Controls.Add(dpEnd);
-                            nextX = dpEnd.Right + 10;
-                        }
-
-                        // ✅ VARCHAR / NVARCHAR
-                        if ((dataType.Equals("varchar", StringComparison.OrdinalIgnoreCase) ||
-                             dataType.Equals("nvarchar", StringComparison.OrdinalIgnoreCase) ||
-                             dataType.Equals("char", StringComparison.OrdinalIgnoreCase) ||
-                             dataType.Equals("nchar", StringComparison.OrdinalIgnoreCase))
-                             && !isPrimaryKey && !isForeignKey)
-                        {
-                            ComboBox cmbFormat = new ComboBox
-                            {
-                                Width = 150,
-                                Location = new Point(nextX, y - 2),
-                                DropDownStyle = ComboBoxStyle.DropDownList
-                            };
-
-                            cmbFormat.Items.AddRange(new string[]
-                            {
-            "Random Name",
-            "Random Address",
-            "Random Phone",
-            "Random CNIC",
-            "Random Email",
-            "Custom"
-                            });
-
-                            cmbFormat.SelectedIndex = 0;
-                            pnlSchema.Controls.Add(cmbFormat);
-
-                            nextX = cmbFormat.Right + 10;
-
-                            TextBox txtCustom = new TextBox
-                            {
-                                Width = 150,
-                                Location = new Point(nextX, y - 2),
-                                PlaceholderText = "Enter custom format",
-                                Visible = false
-                            };
-
-                            cmbFormat.SelectedIndexChanged += (s, e) =>
-                            {
-                                txtCustom.Visible = cmbFormat.SelectedItem.ToString() == "Custom";
-                            };
-
-                            pnlSchema.Controls.Add(txtCustom);
-                            nextX = txtCustom.Right + 10;
-                        }
-
-                        // ✅ Nullable checkbox
-                        if (isNullable.Equals("YES", StringComparison.OrdinalIgnoreCase))
-                        {
-                            CheckBox chkNullable = new CheckBox
-                            {
-                                Text = "Is Null",
-                                AutoSize = true,
-                                Location = new Point(nextX, y - 2),
-                                Checked = false
-                            };
-                            pnlSchema.Controls.Add(chkNullable);
-                        }
-
-                        y += 25;
-                    }
-
-
-
-
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Error loading schema: " + ex.Message);
-            }
-        }
-
-        private void btnFeedData_Click(object sender, EventArgs e)
-        {
-            if (cmbDatabaes.SelectedItem == null || cmbTable.SelectedItem == null)
-            {
-                MessageBox.Show("Please select a database and a table.");
-                return;
-            }
-
-            if (!int.TryParse(txtTotalRows.Text.Trim(), out int rowCount) || rowCount <= 0)
-            {
-                MessageBox.Show("Please enter a valid number of rows.");
-                return;
-            }
-
-            string databaseName = cmbDatabaes.SelectedItem.ToString();
-            string tableName = cmbTable.SelectedItem.ToString();
-            string baseConnectionString = DbConnectionHelper.ConnectionString;
-
-            SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder(baseConnectionString)
-            {
-                InitialCatalog = databaseName
-            };
-
-            using SqlConnection con = new SqlConnection(builder.ToString());
-            con.Open();
-
-            for (int i = 0; i < rowCount; i++)
-            {
-                var insertColumns = new List<string>();
-                var insertParams = new List<string>();
-                var insertValues = new List<SqlParameter>();
-                int startNum = -1;
-                int endNum = 0;
-
-                foreach (Control ctrl in pnlSchema.Controls)
-                {
-                    if (ctrl is Label lbl && lbl.Text.Contains("("))
-                    {
-                        string columnName = lbl.Text.Split(' ')[0];
-                        
-                        string dataType = lbl.Text.Contains("(")
-                            ? lbl.Text.Split('(')[1].Replace(")", "").ToLower()
-                            : "varchar";
-                        
-                        bool isPk = lbl.Text.Contains("[PK]");
-
-
-                        insertColumns.Add(columnName);
-
-                        if (isPk)
-                        {
-                            var lastkey = GetMaxPrimaryKeyValue(tableName);
-                        
-                        
-                        }
-
-
-                        continue;
-
-                        //// Controls in same row
-                        //TextBox txtStart = null, txtEnd = null, txtCustom = null;
-                        //ComboBox cmbBox = null;
-                        //DateTimePicker dpStart = null, dpEnd = null;
-                        //CheckBox chkNullable = null;
-
-                        //foreach (Control rowCtrl in pnlSchema.Controls)
-                        //{
-                        //    if (rowCtrl.Location.Y == lbl.Location.Y && rowCtrl != lbl)
-                        //    {
-                        //        if (rowCtrl is TextBox tb)
-                        //        {
-                        //            if (tb.PlaceholderText == "Start") txtStart = tb;
-                        //            else if (tb.PlaceholderText == "End") txtEnd = tb;
-                        //            else txtCustom = tb;
-                        //        }
-                        //        else if (rowCtrl is ComboBox cb) cmbBox = cb;
-                        //        else if (rowCtrl is DateTimePicker dp)
-                        //        {
-                        //            if (dpStart == null) dpStart = dp;
-                        //            else dpEnd = dp;
-                        //        }
-                        //        else if (rowCtrl is CheckBox chk) chkNullable = chk;
-                        //    }
-                        //}
-
-                        //// Default empty
-                        //object insertValue = DBNull.Value;
-
-                        //// Handle NULL checkbox
-                        //if (chkNullable != null && chkNullable.Checked)
-                        //{
-                        //    insertValue = DBNull.Value;
-                        //}
-                        //else if (dataType.StartsWith("int") && txtStart != null && txtEnd != null)
-                        //{
-                        //    if (int.TryParse(txtStart.Text, out int s) && int.TryParse(txtEnd.Text, out int end))
-                        //        insertValue = GetRandomNumber(s, end);
-                        //}
-                        //else if (dataType.Contains("date") && dpStart != null && dpEnd != null)
-                        //{
-                        //    DateTime start = dpStart.Value;
-                        //    DateTime end = dpEnd.Value;
-                        //    int range = (end - start).Days;
-                        //    insertValue = start.AddDays(_random.Next(range + 1));
-                        //}
-                        //else if ((dataType.Contains("char") || dataType.Contains("text")) && cmbBox != null)
-                        //{
-                        //    string choice = cmbBox.SelectedItem?.ToString();
-
-                        //    if (choice == "Random Name")
-                        //        insertValue = "Name" + _random.Next(1000, 9999);
-                        //    else if (choice == "Random Address")
-                        //        insertValue = "Street " + _random.Next(1, 200);
-                        //    else if (choice == "Random Phone")
-                        //        insertValue = "03" + _random.Next(100000000, 999999999);
-                        //    else if (choice == "Random CNIC")
-                        //        insertValue = _random.Next(10000, 99999) + "-" + _random.Next(1000000, 9999999) + "-" + _random.Next(1, 9);
-                        //    else if (choice == "Random Email")
-                        //        insertValue = "user" + _random.Next(1000, 9999) + "@mail.com";
-                        //    else if (choice == "Custom" && txtCustom != null)
-                        //        insertValue = GenerateRandomByFormat(txtCustom.Text);
-                        //}
-
-                        // Add to insert parts
-
-
-
-                        //insertValues.Add(new SqlParameter("@" + columnName, insertValue ?? DBNull.Value));
-                    }
-                    object insertValue = DBNull.Value;
-                    if (ctrl is ComboBox cmb)
-                    {
-                        string value = cmb.SelectedItem.ToString();
-
-                        if (value == "Random Name")
-                        {
-                            insertValue = "Name" + _random.Next(1000, 9999);
-
-                        }
-                        else if (value == "Random Email")
-                        {
-                            insertValue = "user" + _random.Next(1000, 9999) + "@mail.com";
-                        }
-                        else if (value == "Random Phone")
-                        {
-                            insertValue = "03" + _random.Next(100000000, 999999999);
-                        }
-
-                        insertParams.Add($"'{insertValue.ToString().Replace("'", "''")}'");
-                        continue;
-
-                    }
-
-                    if (ctrl is TextBox txt)
-                    {
-
-                        if (txt.PlaceholderText == "Start")
-                        {
-                            startNum = Convert.ToInt32(txt.Text);
-                        }
-                        if (txt.PlaceholderText == "End")
-                        {
-                            endNum = Convert.ToInt32(txt.Text);
-
-                        }
-
-                        if (startNum > 0 && endNum > 0)
-                        {
-                            insertValue = GetRandomNumber(startNum, endNum);
-
-                            insertParams.Add(insertValue.ToString());
-                            startNum = endNum = -1;
-
-                            continue;
-                        }
-
-                        if (txt.PlaceholderText == "Percentage of True")
-                        {
-                            insertParams.Add("true");
-                        }
-                    }
-
-
-                }
-
-
-                if (insertColumns.Count > 0)
-                {
-                    string query = $"INSERT INTO {tableName} ({string.Join(",", insertColumns)}) " +
-                                   $"VALUES ({string.Join(",", insertParams)})";
-
-                    using SqlCommand cmd = new SqlCommand(query, con);
-                    cmd.Parameters.AddRange(insertValues.ToArray());
-                    cmd.ExecuteNonQuery();
-                }
-            }
-
-            MessageBox.Show($"{rowCount} rows inserted successfully into {tableName}.");
-        }
-
-        public object GetMaxPrimaryKeyValue(string tableName)
-        {
-            string databaseName = cmbDatabaes.SelectedItem.ToString();
-            string baseConnectionString = DbConnectionHelper.ConnectionString;
-
-            SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder(baseConnectionString)
-            {
-                InitialCatalog = databaseName
-            };
-
-            using (var connection = new SqlConnection(builder.ToString()))
-            {
-                connection.Open();
-
-                string pkQuery = @"
-                        SELECT TOP 1 c.COLUMN_NAME
-                        FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
-                        JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE c
-                            ON tc.CONSTRAINT_NAME = c.CONSTRAINT_NAME
-                           AND tc.TABLE_SCHEMA = c.TABLE_SCHEMA
-                           AND tc.TABLE_NAME = c.TABLE_NAME
-                        WHERE tc.TABLE_NAME = @TableName
-                          AND tc.TABLE_SCHEMA = 'dbo'
-                          AND tc.CONSTRAINT_TYPE = 'PRIMARY KEY'";
-
-
-                string pkColumn = null;
-                using (var cmd = new SqlCommand(pkQuery, connection))
-                {
-                    cmd.Parameters.AddWithValue("@TableName", tableName);
-                    cmd.Parameters.AddWithValue("@Schema", "dbo");
-                    pkColumn = cmd.ExecuteScalar()?.ToString();
-                }
-
-                if (string.IsNullOrEmpty(pkColumn))
-                    throw new Exception($"No primary key found for table {tableName}");
-
-                // Step 2: Build and run MAX query safely
-                string safeTableName = "[" + tableName.Replace("]", "]]") + "]";
-                string safeColumnName = "[" + pkColumn.Replace("]", "]]") + "]";
-                string sql = $"SELECT MAX({safeColumnName}) FROM {safeTableName}";
-
-                using (var cmd = new SqlCommand(sql, connection))
-                {
-                    var maxValue = cmd.ExecuteScalar();
-                    return maxValue == DBNull.Value ? null : maxValue;
-                }
-            }
-        }
-
-
-
+        InitializeComponent(); AppUi.Apply(this); pnlSchema.Controls.Add(settings); AppUi.StyleTree(settings); settings.ReadOnly = false; settings.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells;
+        settings.Columns.Add(new DataGridViewTextBoxColumn { Name = "Column", HeaderText = "Column", ReadOnly = true }); settings.Columns.Add(new DataGridViewTextBoxColumn { Name = "Type", HeaderText = "SQL type", ReadOnly = true });
+        settings.Columns.Add(new DataGridViewComboBoxColumn { Name = "Mode", HeaderText = "Generator", FlatStyle = FlatStyle.Flat });
+        foreach (string name in new[] { "Minimum", "Maximum", "Format" }) settings.Columns.Add(new DataGridViewTextBoxColumn { Name = name, HeaderText = name == "Format" ? "Constant / custom format / true %" : name });
+        settings.CurrentCellDirtyStateChanged += (_, _) => { if (settings.IsCurrentCellDirty) settings.CommitEdit(DataGridViewDataErrorContexts.Commit); };
+        settings.DataError += (_, e) => { e.ThrowException = false; };
+        cmbTable.SelectedIndexChanged += (_, _) => { schema = null; settings.Rows.Clear(); };
+        txtTotalRows.Text = "100"; Controls.Add(cancel); AppUi.StyleTree(cancel); cancel.Click += (_, _) => operation?.Cancel();
+        FormClosed += (_, _) => { operation?.Cancel(); lifetime.Cancel(); };
     }
+    private async void frmDummyData_Load(object sender, EventArgs e)
+    {
+        try { var databases = await SqlTools.DatabasesAsync(DbConnectionHelper.ConnectionString, lifetime.Token); foreach (DataRow row in databases.Rows) cmbDatabaes.Items.Add(row[0]); if (DbConnectionHelper.SelectedDatabase != null) cmbDatabaes.SelectedItem = DbConnectionHelper.SelectedDatabase; }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { SqlTools.Error(this, ex); }
+    }
+    private async void cmbDatabaes_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        schema = null; settings.Rows.Clear(); cmbTable.Items.Clear();
+        if (cmbDatabaes.SelectedItem is not string database) return;
+        cmbDatabaes.Enabled = false;
+        try
+        {
+            var tables = await SqlTools.QueryAsync(SqlTools.DatabaseConnection(DbConnectionHelper.ConnectionString, database), "SELECT QUOTENAME(SCHEMA_NAME(schema_id))+'.'+QUOTENAME(name) FROM sys.tables ORDER BY schema_id,name", lifetime.Token);
+            foreach (DataRow row in tables.Rows) cmbTable.Items.Add(row[0]);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { SqlTools.Error(this, ex); }
+        finally { if (!IsDisposed) cmbDatabaes.Enabled = true; }
+    }
+    private async void btnViewSchema_Click(object sender, EventArgs e)
+    {
+        if (cmbDatabaes.SelectedItem is not string database || cmbTable.SelectedItem is not string table) { MessageBox.Show(this, "Select a database and table."); return; }
+        btnViewSchema.Enabled = false;
+        try
+        {
+            schema = await SampleDataService.ReadAsync(SqlTools.DatabaseConnection(DbConnectionHelper.ConnectionString, database), table, lifetime.Token); settings.Rows.Clear();
+            foreach (var column in schema.Columns.Where(SampleDataService.Writable))
+            {
+                int index = settings.Rows.Add(); var row = settings.Rows[index]; row.Tag = column;
+                row.Cells["Column"].Value = column.Name; row.Cells["Type"].Value = column.Type;
+                var mode = (DataGridViewComboBoxCell)row.Cells["Mode"];
+                mode.Items.AddRange("Automatic", "Constant");
+                if (column.Type is "varchar" or "nvarchar" or "char" or "nchar" or "text" or "ntext") mode.Items.AddRange("Custom format", "Random Name", "Random Email", "Random Phone", "Random Address", "Random CNIC");
+                if (column.Nullable) mode.Items.Add("NULL"); if (column.HasDefault || column.Nullable) mode.Items.Add("Database default");
+                bool foreign = schema.ForeignKeys.Any(fk => fk.Columns.Contains(column.Name)); if (foreign) mode.Items.Add("Referenced row");
+                mode.Value = foreign ? "Referenced row" : column.HasDefault ? "Database default" : "Automatic";
+            }
+            Text = $"Generate sample data • {table} • {settings.Rows.Count} writable columns";
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { schema = null; SqlTools.Error(this, ex); }
+        finally { if (!IsDisposed) btnViewSchema.Enabled = true; }
+    }
+    private async void btnFeedData_Click(object sender, EventArgs e)
+    {
+        if (schema == null) { MessageBox.Show(this, "Load the selected table schema first."); return; }
+        if (!int.TryParse(txtTotalRows.Text, out int count) || count is <= 0 or > 100000) { MessageBox.Show(this, "Enter 1–100,000 rows per insertion."); return; }
+        settings.EndEdit();
+        var options = settings.Rows.Cast<DataGridViewRow>().Select(row => new SampleOption((SampleColumn)row.Tag!, Convert.ToString(row.Cells["Mode"].Value) ?? "Automatic", Convert.ToString(row.Cells["Minimum"].Value) ?? "", Convert.ToString(row.Cells["Maximum"].Value) ?? "", Convert.ToString(row.Cells["Format"].Value) ?? "")).ToList();
+        operation?.Dispose(); operation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+        btnFeedData.Enabled = btnViewSchema.Enabled = cmbDatabaes.Enabled = cmbTable.Enabled = settings.Enabled = false; cancel.Enabled = true;
+        var progress = new Progress<int>(done => { if (!IsDisposed) Text = $"Inserting sample data • {done:N0} / {count:N0}"; });
+        try
+        {
+            await SampleDataService.InsertAsync(SqlTools.DatabaseConnection(DbConnectionHelper.ConnectionString, cmbDatabaes.Text), schema, options, count, progress, operation.Token);
+            if (!IsDisposed) MessageBox.Show(this, $"Inserted {count:N0} rows into {schema.Table}.");
+        }
+        catch (OperationCanceledException) { if (!IsDisposed) MessageBox.Show(this, "Insertion cancelled. The transaction was rolled back."); }
+        catch (Exception ex) { if (!IsDisposed) SqlTools.Error(this, new InvalidOperationException("Insertion failed and was rolled back. " + ex.Message, ex)); }
+        finally { if (!IsDisposed) { btnFeedData.Enabled = btnViewSchema.Enabled = cmbDatabaes.Enabled = cmbTable.Enabled = settings.Enabled = true; cancel.Enabled = false; Text = "Generate sample data | SQL Helper"; } }
+    }
+    public int GetRandomNumber(int start, int end) { if (start > end) throw new ArgumentException("Start must not exceed end."); return checked((int)Random.Shared.NextInt64(start, (long)end + 1)); }
+    public string GenerateRandomByFormat(string format) => SampleDataService.Format(format);
 }
-

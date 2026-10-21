@@ -1,892 +1,222 @@
-﻿using DocumentFormat.OpenXml.Office2010.Excel;
-using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.Data.SqlClient;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
 using System.Data;
-using System.Diagnostics;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using static System.ComponentModel.Design.ObjectSelectorEditor;
 
-namespace SQL_Helper
+namespace SQL_Helper;
+
+public partial class MainDashboard : Form
 {
-    public partial class MainDashboard : Form
+    private readonly ToolStripStatusLabel status = new() { Spring = true, TextAlign = ContentAlignment.MiddleLeft };
+    private readonly Label empty = new() { Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter, Text = "Connect to SQL Server to explore your databases.", ForeColor = Color.SlateGray };
+    private string objectKind = "Tables";
+    private CancellationTokenSource? pending;
+    private readonly CancellationTokenSource lifetime = new();
+    private int databaseLoadVersion;
+    private readonly Dictionary<string, Button> tabs = new();
+
+    public MainDashboard()
     {
-        private int selectedRowIndex = -1;
-        private int selectedColumnIndex = -1;
-        private DataTable databaseDetailTable;
-        private CancellationTokenSource _cts;
-
-
-
-        public MainDashboard()
-        {
-            InitializeComponent();
-        }
-
-        private void MainDashboard_Load(object sender, EventArgs e)
-        {
-
-            LoadDatabases();
-        }
-
-        private async void listBoxDB_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            listBoxDB.Enabled = false;
-
-            string selectedDB = listBoxDB.SelectedItem?.ToString();
-            if (!string.IsNullOrEmpty(selectedDB))
-            {
-                await LoadObjectCountsAsync(selectedDB);
-                await LoadDatabaseDetail(selectedDB);
-            }
-
-            listBoxDB.Enabled = true;
-            btnTable_Click(sender, e);
-        }
-
-        private void LoadDatabases()
-        {
-            string? connectionString = DbConnectionHelper.ConnectionString?.ToString();
-            string query = "SELECT name FROM sys.databases WHERE database_id > 4";
-
-            using (SqlConnection con = new SqlConnection(connectionString))
-            using (SqlCommand cmd = new SqlCommand(query, con))
-            {
-                try
-                {
-                    con.Open();
-                    using (SqlDataReader reader = cmd.ExecuteReader())
-                    {
-                        listBoxDB.Items.Clear();
-                        while (reader.Read())
-                        {
-                            listBoxDB.Items.Add(reader["name"].ToString());
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("Error loading databases: " + ex.Message);
-                }
-            }
-        }
-
-        private async Task LoadDatabaseDetail(string databaseName)
-        {
-            string? baseConnectionString = DbConnectionHelper.ConnectionString;
-
-            if (string.IsNullOrWhiteSpace(baseConnectionString))
-            {
-                MessageBox.Show("Connection string is missing.");
-                return;
-            }
-
-
-
-            SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder(baseConnectionString)
-            {
-                InitialCatalog = databaseName
-            };
-
-            string query = @"
-                    SELECT
-                        s.name AS SchemaName,
-                        t.name AS TableName,
-
-                        (
-                            SELECT COUNT(*) FROM sys.triggers tr2 WHERE tr2.parent_id = t.object_id
-                        ) AS TriggerCount,
-
-                        STUFF((
-                            SELECT ', ' + tr.name
-                            FROM sys.triggers tr
-                            WHERE tr.parent_id = t.object_id
-                            FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, '') AS TriggerNames,
-
-                        (
-                            SELECT COUNT(DISTINCT pt.object_id)
-                            FROM sys.foreign_keys fk2
-                            INNER JOIN sys.tables pt ON fk2.referenced_object_id = pt.object_id
-                            WHERE fk2.parent_object_id = t.object_id
-                        ) AS ParentCount,
-
-                        
-
-                        (
-                            SELECT COUNT(DISTINCT ct.object_id)
-                            FROM sys.foreign_keys cfk2
-                            INNER JOIN sys.tables ct ON cfk2.parent_object_id = ct.object_id
-                            WHERE cfk2.referenced_object_id = t.object_id
-                        ) AS ChildCount
-
-                    FROM
-                        sys.tables t
-                    INNER JOIN sys.schemas s ON t.schema_id = s.schema_id
-                    ORDER BY
-                        s.name, t.name;
-            ";
-
-            //STUFF((
-            //    SELECT DISTINCT ', ' + ps.name + '.' + pt.name
-            //    FROM sys.foreign_keys fk2
-            //    INNER JOIN sys.tables pt ON fk2.referenced_object_id = pt.object_id
-            //    INNER JOIN sys.schemas ps ON pt.schema_id = ps.schema_id
-            //    WHERE fk2.parent_object_id = t.object_id
-            //    FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, '') AS ParentTables,
-
-            //,
-
-            //            STUFF((
-            //                SELECT DISTINCT ', ' + cs.name + '.' + ct.name
-            //                FROM sys.foreign_keys cfk2
-            //                INNER JOIN sys.tables ct ON cfk2.parent_object_id = ct.object_id
-            //                INNER JOIN sys.schemas cs ON ct.schema_id = cs.schema_id
-            //                WHERE cfk2.referenced_object_id = t.object_id
-            //                FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 2, '') AS ChildTables
-
-            try
-            {
-                using SqlConnection con = new SqlConnection(builder.ToString());
-                await con.OpenAsync();
-
-                using SqlCommand cmd = new SqlCommand(query, con);
-                using SqlDataAdapter da = new SqlDataAdapter(cmd);
-
-                DataTable dt = new DataTable();
-                await Task.Run(() => da.Fill(dt));
-
-                databaseDetailTable = dt; // Store full data for filtering
-
-                dataGridViewDetail.Invoke(() =>
-                {
-                    dataGridViewDetail.DataSource = databaseDetailTable;
-
-                    dataGridViewDetail.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
-                    dataGridViewDetail.ScrollBars = ScrollBars.Both;
-                    dataGridViewDetail.AutoResizeColumns();
-                    dataGridViewDetail.AutoResizeRows();
-                    dataGridViewDetail.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
-                });
-
-                dataGridViewDetail.CellPainting += dataGridViewTableDetail_CellPainting;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Error loading table details: " + ex.Message);
-            }
-
-        }
-
-
-
-
-        private async Task LoadObjectCountsAsync(string databaseName)
-        {
-            string? baseConnectionString = DbConnectionHelper.ConnectionString;
-
-            if (string.IsNullOrWhiteSpace(baseConnectionString))
-            {
-                MessageBox.Show("Connection string is missing.");
-                return;
-            }
-
-            SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder(baseConnectionString)
-            {
-                InitialCatalog = databaseName
-            };
-
-            string query = @"
-        SELECT 
-            (SELECT COUNT(*) FROM sys.tables) AS TableCount,
-            (SELECT COUNT(*) FROM sys.views) AS ViewCount,
-            (SELECT COUNT(*) FROM sys.procedures) AS ProcedureCount,
-            (SELECT COUNT(*) FROM sys.triggers) AS TriggerCount;";
-
-            try
-            {
-                using SqlConnection con = new SqlConnection(builder.ToString());
-                await con.OpenAsync();
-
-                using SqlCommand cmd = new SqlCommand(query, con);
-                using SqlDataReader reader = await cmd.ExecuteReaderAsync();
-
-                if (await reader.ReadAsync())
-                {
-                    lblTotalTable.Invoke(() => lblTotalTable.Text = reader["TableCount"].ToString());
-                    lblTotalViews.Invoke(() => lblTotalViews.Text = reader["ViewCount"].ToString());
-                    lblTotalStorePrcedure.Invoke(() => lblTotalStorePrcedure.Text = reader["ProcedureCount"].ToString());
-                    lblTotalTrigger.Invoke(() => lblTotalTrigger.Text = reader["TriggerCount"].ToString());
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Error loading object counts: " + ex.Message);
-            }
-        }
-
-        private void dataGridViewTableDetail_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
-        {
-            //if (e.RowIndex < 0 || e.ColumnIndex < 0)
-            //    return;
-
-            //string? cellText = e.FormattedValue?.ToString();
-            //if (string.IsNullOrEmpty(cellText))
-            //    return;
-            //if (cellText.Contains(","))
-            //{
-            //    e.Handled = true;  // we will fully paint the cell
-
-
-            //    using (Graphics g = e.Graphics)
-            //    {
-            //        Font font = e.CellStyle.Font;
-            //        Brush normalBrush = new SolidBrush(Color.Black);
-
-            //        float x = e.CellBounds.Left + 2;
-            //        float y = e.CellBounds.Top + (e.CellBounds.Height - font.Height) / 2;
-
-            //        int commaIndex = 0; // to track which comma we are on
-
-            //        for (int i = 0; i < cellText.Length; i++)
-            //        {
-            //            string ch = cellText[i].ToString();
-
-            //            Brush brushToUse;
-
-            //            if (ch == ",")
-            //            {
-            //                brushToUse = new SolidBrush(GetColorByIndex(commaIndex));
-            //                commaIndex++;
-            //            }
-            //            else
-            //            {
-            //                brushToUse = normalBrush;
-            //            }
-
-            //            SizeF charSize = g.MeasureString(ch, font);
-
-            //            g.DrawString(ch, font, brushToUse, x, y);
-            //            x += charSize.Width;
-
-            //            if (brushToUse != normalBrush)
-            //                brushToUse.Dispose();
-            //        }
-
-            //        normalBrush.Dispose();
-            //    }
-            //}
-
-
-        }
-
-        //private Color GetColorByIndex(int index)
-        //{
-        //    Color[] colors = new Color[]
-        //    {
-        //Color.Black,        // High contrast default
-        //Color.DarkOrange,   // Bright and warm
-        //Color.MediumBlue,   // Strong blue
-        //Color.DarkViolet,   // Very distinct
-        //Color.Crimson,      // Dark red tone
-        //Color.SeaGreen,     // Deep green
-        //Color.Goldenrod,    // Yellowish tone
-        //Color.SlateGray     // Neutral contrast
-        //    };
-
-        //    return colors[index % colors.Length];
-        //}
-
-
-
-
-        private void dataGridViewTableDetail_CellClick(object sender, DataGridViewCellEventArgs e)
-        {
-            if (e.RowIndex < 0 || e.ColumnIndex < 0)
-                return;  // Ignore header or invalid clicks
-
-            //selectedRowIndex = e.RowIndex;
-            //selectedColumnIndex = e.ColumnIndex;
-            //dataGridViewTableDetail.Invalidate();
-        }
-
-        private void panel2_Paint(object sender, PaintEventArgs e)
-        {
-
-        }
-
-        private void panel2_Click(object sender, EventArgs e)
-        {
-            //frmStoreProcedureTracking sp = new frmStoreProcedureTracking();
-            //sp.ShowDialog();
-        }
-
-        private async Task LoadAllTriggersAsync()
-        {
-            string? connectionString = DbConnectionHelper.ConnectionString;
-
-            if (string.IsNullOrWhiteSpace(connectionString))
-            {
-                MessageBox.Show("Connection string is missing.");
-                return;
-            }
-
-            DataTable resultTable = new DataTable();
-            resultTable.Columns.Add("DatabaseName");
-            resultTable.Columns.Add("TriggerName");
-            resultTable.Columns.Add("TableName");
-            resultTable.Columns.Add("IsInsteadOf", typeof(bool));
-            resultTable.Columns.Add("CreateDate", typeof(DateTime));
-            resultTable.Columns.Add("ModifyDate", typeof(DateTime));
-            //resultTable.Columns.Add("UsesAPI"); // placeholder, filled later
-
-            using SqlConnection conn = new SqlConnection(connectionString);
-            await conn.OpenAsync();
-
-            List<string> dbNames = new List<string>();
-            using (SqlCommand cmd = new SqlCommand("SELECT name FROM sys.databases WHERE database_id > 4", conn))
-            using (SqlDataReader reader = await cmd.ExecuteReaderAsync())
-            {
-                while (await reader.ReadAsync())
-                {
-                    dbNames.Add(reader.GetString(0));
-                }
-            }
-
-            foreach (string dbName in dbNames)
-            {
-                try
-                {
-                    conn.ChangeDatabase(dbName);
-
-                    string query = @"
-                SELECT 
-                    '" + dbName + @"' AS DatabaseName,
-                    tr.name AS TriggerName,
-                    OBJECT_NAME(tr.parent_id) AS TableName,
-                    tr.is_instead_of_trigger AS IsInsteadOf,
-                    tr.create_date AS CreateDate,
-                    tr.modify_date AS ModifyDate
-                FROM sys.triggers tr;";
-
-                    using SqlDataAdapter da = new SqlDataAdapter(query, conn);
-                    DataTable dt = new DataTable();
-                    da.Fill(dt);
-
-                    // Add default placeholder for UsesAPI
-                    //foreach (DataRow row in dt.Rows)
-                    //    row["UsesAPI"] = "Loading...";
-
-                    resultTable.Merge(dt);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Error loading triggers from {dbName}: {ex.Message}");
-                }
-            }
-
-            dataGridViewDetail.DataSource = resultTable;
-
-            // Start checking UsesAPI in background
-            // _ = CheckTriggerApiUsageAsync(resultTable);
-        }
-
-
-        private async Task CheckTriggerApiUsageAsync(DataTable resultTable)
-        {
-            string? connectionString = DbConnectionHelper.ConnectionString;
-            using SqlConnection conn = new SqlConnection(connectionString);
-            await conn.OpenAsync();
-
-            foreach (DataRow row in resultTable.Rows)
-            {
-                string dbName = row["DatabaseName"].ToString()!;
-                string triggerName = row["TriggerName"].ToString()!;
-
-                try
-                {
-                    conn.ChangeDatabase(dbName);
-
-                    string query = $@"
-                SELECT m.definition
-                FROM sys.triggers t
-                JOIN sys.sql_modules m ON t.object_id = m.object_id
-                WHERE t.name = @triggerName;";
-
-                    using SqlCommand cmd = new SqlCommand(query, conn);
-                    cmd.Parameters.AddWithValue("@triggerName", triggerName);
-                    string? definition = (string?)await cmd.ExecuteScalarAsync();
-
-                    if (!string.IsNullOrEmpty(definition) && (definition.Contains("http://") || definition.Contains("https://")))
-                        row["UsesAPI"] = "Yes";
-                    else
-                        row["UsesAPI"] = "No";
-                }
-                catch
-                {
-                    row["UsesAPI"] = "Error";
-                }
-
-                // Refresh only the current row in UI (optional)
-                dataGridViewDetail.Invoke(() =>
-                {
-                    dataGridViewDetail.Refresh();
-                });
-            }
-        }
-
-
-        private void panel3_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void panel4_Click(object sender, EventArgs e)
-        {
-            LoadAllTriggersAsync();
-        }
-
-        private void dataGridViewDetail_MouseDown(object sender, MouseEventArgs e)
-        {
-            if (e.Button == MouseButtons.Right)
-            {
-                var hit = dataGridViewDetail.HitTest(e.X, e.Y);
-                if (hit.RowIndex >= 0)
-                {
-                    dataGridViewDetail.ClearSelection();
-                    dataGridViewDetail.Rows[hit.RowIndex].Selected = true;
-
-                    // Show the context menu at mouse position
-                    contextMenuStrip1.Show(dataGridViewDetail, new Point(e.X, e.Y));
-                }
-            }
-        }
-
-        private void viewDataToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            if (dataGridViewDetail.SelectedRows.Count > 0)
-            {
-                ViewData data = new ViewData();
-
-
-                data.DbName = listBoxDB.SelectedItem.ToString();
-                data.tableName = dataGridViewDetail.SelectedRows[0].Cells[1].Value?.ToString();
-                data.SpName = null;
-
-                data.ShowDialog();
-            }
-            else
-            {
-                MessageBox.Show("Please select a row.");
-            }
-        }
-
-        private void panel4_Paint(object sender, PaintEventArgs e)
-        {
-
-        }
-
-        private void toolStripButton1_Click(object sender, EventArgs e)
-        {
-            frmStoreProcedureTracking sp = new frmStoreProcedureTracking();
-            sp.ShowDialog();
-        }
-
-        private void toolStripButton2_Click(object sender, EventArgs e)
-        {
-            frmTableSearching frmTableSearching = new frmTableSearching();
-            frmTableSearching.ShowDialog();
-        }
-
-        private void textBox1_TextChanged(object sender, EventArgs e)
-        {
-            // Get current data source
-            var source = dataGridViewDetail.DataSource;
-
-            if (source == null)
-                return;
-
-            // Extract DataTable from various source types
-            DataTable table = null;
-
-            if (source is DataView dv)
-                table = dv.Table;
-            else if (source is DataTable dt)
-                table = dt;
-
-            if (table == null || table.Rows.Count == 0)
-                return;
-
-            string filterText = textBox1.Text.Trim();
-
-            // Clear filter if search is empty
-            if (string.IsNullOrEmpty(filterText))
-            {
-                if (source is DataView originalView)
-                    originalView.RowFilter = "";
-                dataGridViewDetail.DataSource = source;
-                return;
-            }
-
-            // Escape for DataView filter
-            filterText = filterText.Replace("'", "''")
-                                  .Replace("[", "[[]")
-                                  .Replace("%", "[%]")
-                                  .Replace("_", "[_]");
-
-            // Build filter for ALL string columns
-            var stringColumns = new List<string>();
-            foreach (DataColumn col in table.Columns)
-            {
-                if (col.DataType == typeof(string))
-                {
-                    stringColumns.Add(col.ColumnName);
-                }
-            }
-
-            if (stringColumns.Count == 0)
-                return;
-
-            // Create the filter condition
-            string filter = string.Join(" OR ",
-                stringColumns.Select(col => $"[{col}] LIKE '%{filterText}%'"));
-
-            // Apply filter
-            DataView filteredView = new DataView(table);
-            filteredView.RowFilter = filter;
-            dataGridViewDetail.DataSource = filteredView;
-        }
-        private void toolStripButton4_Click(object sender, EventArgs e)
-        {
-           
-        }
-
-        private void toolStripButton5_Click(object sender, EventArgs e)
-        {
-            frmConnectSQL conn = new frmConnectSQL();
-            conn.ShowDialog();
-            MainDashboard_Load(null, null);
-            if (DbConnectionHelper.ConnectionString != null)
-            {
-                toolStripButton1.Enabled = toolStripButton2.Enabled = toolStripButton7.Enabled = true;
-            }
-
-
-        }
-
-        private void toolStripButton6_Click(object sender, EventArgs e)
-        {
-            frmComparisionDatabase comDb = new frmComparisionDatabase();
-            comDb.ShowDialog();
-        }
-
-        private void toolStripTextBox1_Click(object sender, EventArgs e)
-        {
-            frm_Sp_Xray xray = new frm_Sp_Xray();
-            xray.ShowDialog();
-        }
-
-        private void toolStripButton7_Click(object sender, EventArgs e)
-        {
-            frmDummyData dummy = new frmDummyData();
-            dummy.ShowDialog();
-        }
-
-        private void panel1_Paint(object sender, PaintEventArgs e)
-        {
-
-
-        }
-
-        private void btnTable_Click(object sender, EventArgs e)
-        {
-            if (listBoxDB.SelectedItem == null)
-            {
-                MessageBox.Show("Please select a database first.");
-                return;
-            }
-
-            btnTable.BackColor = System.Drawing.Color.LightBlue;
-            btnShowProcedures.BackColor = System.Drawing.Color.WhiteSmoke;
-            btnShowView.BackColor = System.Drawing.Color.WhiteSmoke;
-            btnShowTriggers.BackColor = System.Drawing.Color.WhiteSmoke;
-            btnShowTypes.BackColor = System.Drawing.Color.WhiteSmoke;
-            dataGridViewDetail.DataSource = null;
-            LoadDatabaseDetail(listBoxDB.SelectedItem.ToString()).ConfigureAwait(false);
-
-        }
-
-        private async void btnShowProcedures_Click(object sender, EventArgs e)
-        {
-            if (listBoxDB.SelectedItem == null)
-            {
-                MessageBox.Show("Please select a database first.");
-                return;
-            }
-
-            // 🔹 UI highlighting
-            btnTable.BackColor = System.Drawing.Color.White;
-            btnShowProcedures.BackColor = System.Drawing.Color.LightBlue;
-            btnShowView.BackColor = System.Drawing.Color.WhiteSmoke;
-            btnShowTriggers.BackColor = System.Drawing.Color.WhiteSmoke;
-            btnShowTypes.BackColor = System.Drawing.Color.WhiteSmoke;
-
-            dataGridViewDetail.DataSource = null;
-
-            string selectedDb = listBoxDB.SelectedItem.ToString();
-
-            try
-            {
-                // ✅ Correct title
-                this.Text = "Loading Procedures...";
-                this.Refresh();
-
-                // ✅ Load procedures for ONE database
-                await LoadProceduresForSingleDatabaseAsync(selectedDb);
-
-                // ✅ Restore title
-                this.Text = "SQL Explorer - Procedures";
-            }
-            catch (OperationCanceledException)
-            {
-                // ignored
-            }
-        }
-
-
-        private async void btnShowView_Click(object sender, EventArgs e)
-        {
-            if (listBoxDB.SelectedItem == null)
-            {
-                MessageBox.Show("Please select a database first.");
-                return;
-            }
-
-            btnTable.BackColor = System.Drawing.Color.White;
-            btnShowProcedures.BackColor = System.Drawing.Color.WhiteSmoke;
-            btnShowView.BackColor = System.Drawing.Color.LightBlue;
-            btnShowTriggers.BackColor = System.Drawing.Color.WhiteSmoke;
-            btnShowTypes.BackColor = System.Drawing.Color.WhiteSmoke;
-            dataGridViewDetail.DataSource = null;
-
-            string selectedDb = listBoxDB.SelectedItem.ToString();
-
-            try
-            {
-                this.Text = "Loading Views...";
-                this.Refresh();
-
-                // Load views data
-                string query = $@"
-            USE [{selectedDb}];
-            SELECT 
-                s.name AS SchemaName,
-                v.name AS ViewName,
-                v.create_date AS CreatedDate,
-                v.modify_date AS ModifiedDate
-            FROM sys.views v
-            INNER JOIN sys.schemas s ON v.schema_id = s.schema_id
-            ORDER BY s.name, v.name";
-
-                DataTable viewsTable = await ExecuteQueryAsync(query);
-                dataGridViewDetail.DataSource = viewsTable;
-
-                this.Text = "SQL Explorer - Views";
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error loading views: {ex.Message}");
-                this.Text = "SQL Explorer";
-            }
-        }
-        private async Task<DataTable> ExecuteQueryAsync(string query)
-        {
-            string? connectionString = DbConnectionHelper.ConnectionString;
-            DataTable table = new DataTable();
-
-            using (SqlConnection conn = new SqlConnection(connectionString))
-            using (SqlCommand cmd = new SqlCommand(query, conn))
-            using (SqlDataAdapter adapter = new SqlDataAdapter(cmd))
-            {
-                await conn.OpenAsync();
-                await Task.Run(() => adapter.Fill(table));
-            }
-
-            return table;
-        }
-        private async void btnShowTriggers_Click(object sender, EventArgs e)
-        {
-            if (listBoxDB.SelectedItem == null)
-            {
-                MessageBox.Show("Please select a database first.");
-                return;
-            }
-
-            btnTable.BackColor = System.Drawing.Color.White;
-            btnShowProcedures.BackColor = System.Drawing.Color.WhiteSmoke;
-            btnShowView.BackColor = System.Drawing.Color.WhiteSmoke;
-            btnShowTriggers.BackColor = System.Drawing.Color.LightBlue;
-            btnShowTypes.BackColor = System.Drawing.Color.WhiteSmoke;
-
-            dataGridViewDetail.DataSource = null;
-
-            // ✅ Show loading title
-            this.Text = "Loading Triggers...";
-            this.Refresh();
-
-            // ✅ WAIT until loading finishes
-            await LoadAllTriggersAsync();
-
-            // ✅ Restore title AFTER loading completes
-            this.Text = "SQL Explorer - Triggers";
-        }
-
-
-        private async void btnShowTypes_Click(object sender, EventArgs e)
-        {
-            if (listBoxDB.SelectedItem == null)
-            {
-                MessageBox.Show("Please select a database first.");
-                return;
-            }
-
-            btnTable.BackColor = System.Drawing.Color.White;
-            btnShowProcedures.BackColor = System.Drawing.Color.WhiteSmoke;
-            btnShowView.BackColor = System.Drawing.Color.WhiteSmoke;
-            btnShowTriggers.BackColor = System.Drawing.Color.White;
-            btnShowTypes.BackColor = System.Drawing.Color.LightBlue;
-            dataGridViewDetail.DataSource = null;
-
-            string selectedDb = listBoxDB.SelectedItem.ToString();
-
-            try
-            {
-                this.Text = "Loading Types...";
-                this.Refresh();
-
-                // Load user-defined types data
-                string query = $@"
-            USE [{selectedDb}];
-            SELECT 
-                s.name AS SchemaName,
-                t.name AS TypeName,
-                t.is_user_defined AS IsUserDefined,
-                t.is_table_type AS IsTableType,
-                t.max_length AS MaxLength,
-                t.precision AS Precision,
-                t.scale AS Scale
-            FROM sys.types t
-            INNER JOIN sys.schemas s ON t.schema_id = s.schema_id
-            WHERE t.is_user_defined = 1
-            ORDER BY s.name, t.name";
-
-                DataTable typesTable = await ExecuteQueryAsync(query);
-                dataGridViewDetail.DataSource = typesTable;
-
-                this.Text = "SQL Explorer - Types";
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error loading types: {ex.Message}");
-                this.Text = "SQL Explorer";
-            }
-        }
-
-        private async Task LoadProceduresForSingleDatabaseAsync(string databaseName)
-        {
-            if (string.IsNullOrWhiteSpace(databaseName))
-            {
-                MessageBox.Show("Invalid database selected.");
-                return;
-            }
-
-            _cts?.Cancel();
-            _cts = new CancellationTokenSource();
-
-            try
-            {
-                this.Text = "Loading Procedures...";
-                this.Refresh();
-
-                // ✅ CALL METHOD ON CURRENT FORM
-                await LoadStoredProceduresAsync(
-                    new List<string> { databaseName },
-                    _cts.Token
-                );
-
-                this.Text = "SQL Explorer - Procedures";
-            }
-            catch (OperationCanceledException)
-            {
-                // ignored
-            }
-        }
-
-        public async Task LoadStoredProceduresAsync(
-        List<string> databases,
-        CancellationToken token)
-        {
-            string cs = DbConnectionHelper.ConnectionString;
-            if (string.IsNullOrWhiteSpace(cs)) return;
-
-            DataTable table = new DataTable();
-            table.Columns.Add("DatabaseName");
-            table.Columns.Add("ProcedureName");
-            table.Columns.Add("CreateDate", typeof(DateTime));
-            table.Columns.Add("ModifyDate", typeof(DateTime));
-
-            using SqlConnection conn = new SqlConnection(cs);
-            await conn.OpenAsync(token);
-
-            foreach (string db in databases)
-            {
-                token.ThrowIfCancellationRequested();
-
-                try
-                {
-                    conn.ChangeDatabase(db);
-
-                    string sql = @"
-                        SELECT
-                            @db AS DatabaseName,
-                            SCHEMA_NAME(schema_id) + '.' + name AS ProcedureName,
-                            create_date,
-                            modify_date
-                        FROM sys.procedures
-                        ORDER BY name";
-
-                    using SqlCommand cmd = new SqlCommand(sql, conn);
-                    cmd.Parameters.AddWithValue("@db", db);
-
-                    using SqlDataAdapter da = new SqlDataAdapter(cmd);
-                    DataTable dt = new DataTable();
-                    da.Fill(dt);
-
-                    foreach (DataRow r in dt.Rows)
-                    {
-                        table.Rows.Add(
-                            r["DatabaseName"],
-                            r["ProcedureName"],
-                            r["create_date"],
-                            r["modify_date"]
-                        );
-                    }
-                }
-                catch
-                {
-                    // optional logging
-                }
-            }
-
-            dataGridViewDetail.DataSource = table;
-        }
-
-
-
+        InitializeComponent();
+        BuildLayout();
     }
+
+    private void BuildLayout()
+    {
+        SuspendLayout();
+        Controls.Clear();
+        Text = "SQL Helper | Database Explorer";
+        MinimumSize = new Size(380, 480);
+        Size = new Size(1250, 800);
+        StartPosition = FormStartPosition.CenterScreen;
+        Font = new Font("Segoe UI", 10);
+        BackColor = Color.FromArgb(244, 247, 251);
+        var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Padding = new Padding(20) };
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
+        root.Controls.Add(new Label { Text = "SQL Helper", Font = new Font("Segoe UI", 24, FontStyle.Bold), AutoSize = true, ForeColor = Color.FromArgb(24, 42, 70) }, 0, 0);
+        var toolbar = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = true, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, 0, 12) };
+        void Action(string title, EventHandler click) { var b = new Button { Text = title, AutoSize = true, Height = 34, FlatStyle = FlatStyle.Flat, BackColor = Color.White, Margin = new Padding(0, 0, 10, 0) }; b.FlatAppearance.BorderColor = Color.LightSteelBlue; b.Click += click; toolbar.Controls.Add(b); }
+        Action("Connect server", toolStripButton5_Click);
+        Action("Refresh", async (_, _) => await LoadDatabasesAsync());
+        Action("Find tables", toolStripButton2_Click);
+        Action("Track procedures", toolStripButton1_Click);
+        Action("Compare databases", toolStripButton6_Click);
+        Action("Generate data", toolStripButton7_Click);
+        Action("Procedure X-Ray", toolStripTextBox1_Click);
+        root.Controls.Add(toolbar, 0, 1);
+        var split = new SplitContainer { Size = new Size(1100, 600), Dock = DockStyle.Fill, FixedPanel = FixedPanel.Panel1, SplitterDistance = 225, Panel1MinSize = 160 };
+        split.Panel1MinSize = 70;
+        var sidebar = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(0, 0, 14, 0) };
+        sidebar.RowStyles.Add(new RowStyle(SizeType.Absolute, 36)); sidebar.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        sidebar.Controls.Add(new Label { Text = "DATABASES", AutoSize = true, ForeColor = Color.SlateGray }, 0, 0);
+        listBoxDB.Dock = DockStyle.Fill; listBoxDB.BorderStyle = BorderStyle.None; listBoxDB.ItemHeight = 28; listBoxDB.IntegralHeight = false;
+        sidebar.Controls.Add(listBoxDB, 0, 1); split.Panel1.Controls.Add(sidebar);
+        var content = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
+        content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        content.RowStyles.Add(new RowStyle(SizeType.AutoSize)); content.RowStyles.Add(new RowStyle(SizeType.Absolute, 44)); content.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        var nav = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = true, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
+        foreach (string kind in new[] { "Tables", "Views", "Procedures", "Triggers", "Types" })
+        {
+            var button = new Button { Text = kind, AutoSize = true, Height = 34, FlatStyle = FlatStyle.Flat, BackColor = Color.White };
+            button.Click += async (_, _) => { objectKind = kind; await LoadObjectsAsync(); };
+            tabs.Add(kind, button); nav.Controls.Add(button);
+        }
+        content.Controls.Add(nav, 0, 0);
+        textBox1.Dock = DockStyle.Fill; textBox1.PlaceholderText = "Search objects in this database…"; textBox1.Margin = new Padding(0, 3, 0, 10);
+        content.Controls.Add(textBox1, 0, 1);
+        var gridPanel = new Panel { Dock = DockStyle.Fill, BackColor = Color.White };
+        dataGridViewDetail.Dock = DockStyle.Fill; dataGridViewDetail.ReadOnly = true; dataGridViewDetail.AllowUserToAddRows = false; dataGridViewDetail.AllowUserToDeleteRows = false;
+        dataGridViewDetail.MultiSelect = false; dataGridViewDetail.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+        dataGridViewDetail.BackgroundColor = Color.White; dataGridViewDetail.BorderStyle = BorderStyle.None; dataGridViewDetail.RowHeadersVisible = false;
+        dataGridViewDetail.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+        dataGridViewDetail.EnableHeadersVisualStyles = false; dataGridViewDetail.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(231, 237, 245);
+        dataGridViewDetail.ColumnHeadersHeight = 38; dataGridViewDetail.RowTemplate.Height = 30;
+        dataGridViewDetail.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(247, 249, 252);
+        dataGridViewDetail.DefaultCellStyle.SelectionBackColor = Color.FromArgb(218, 233, 255); dataGridViewDetail.DefaultCellStyle.SelectionForeColor = Color.Black;
+        gridPanel.Controls.Add(dataGridViewDetail); gridPanel.Controls.Add(empty); content.Controls.Add(gridPanel, 0, 2);
+        split.Panel2.Controls.Add(content); root.Controls.Add(split, 0, 2);
+        var strip = new StatusStrip { Dock = DockStyle.Fill, SizingGrip = false }; strip.Items.Add(status); root.Controls.Add(strip, 0, 3);
+        root.Dock = DockStyle.None;
+        var viewport = new Panel { Dock = DockStyle.Fill, AutoScroll = true };
+        viewport.Controls.Add(root); Controls.Add(viewport);
+        void FitLayout()
+        {
+            int width = Math.Max(320, viewport.ClientSize.Width - SystemInformation.VerticalScrollBarWidth);
+            root.Size = new Size(width, Math.Max(viewport.ClientSize.Height, width < 640 ? 780 : 540));
+        }
+        viewport.SizeChanged += (_, _) => FitLayout();
+        Shown += (_, _) => FitLayout();
+        FitLayout();
+        split.SizeChanged += (_, _) =>
+        {
+            bool narrow = split.Width < 640;
+            var direction = narrow ? Orientation.Horizontal : Orientation.Vertical;
+            if (split.Orientation != direction) split.Orientation = direction;
+            int length = narrow ? split.Height : split.Width;
+            split.Panel1MinSize = narrow ? 70 : 140;
+            if (length > split.Panel1MinSize + 60) split.SplitterDistance = Math.Max(split.Panel1MinSize, Math.Min(narrow ? 110 : 225, length / 3));
+        };
+        Load += (_, _) => AppUi.FitToScreen(this);
+        AppUi.StyleTree(this);
+        viewOrChangeSchemaToolStripMenuItem.Text = "View definition / columns / run procedure";
+        viewOrChangeSchemaToolStripMenuItem.Click += async (_, _) => await ShowDefinitionAsync();
+        dataGridViewDetail.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0) await ShowDefinitionAsync(); };
+        FormClosed += (_, _) => { pending?.Cancel(); lifetime.Cancel(); };
+        ResumeLayout(true);
+    }
+
+    private async void MainDashboard_Load(object? sender, EventArgs e) => await LoadDatabasesAsync();
+    private Task<DataTable> QueryAsync(string sql, string database, CancellationToken token) => SqlTools.QueryAsync(SqlTools.DatabaseConnection(DbConnectionHelper.ConnectionString, database), sql, token);
+    private async Task LoadDatabasesAsync()
+    {
+        if (string.IsNullOrWhiteSpace(DbConnectionHelper.ConnectionString)) { status.Text = "Disconnected • Connect a server to get started"; return; }
+        pending?.Cancel();
+        int version = ++databaseLoadVersion;
+        try
+        {
+            status.Text = "Loading databases…";
+            var table = await QueryAsync("SELECT name FROM sys.databases WHERE state = 0 AND HAS_DBACCESS(name) = 1 AND database_id > 4 ORDER BY name", "master", lifetime.Token);
+            if (IsDisposed || version != databaseLoadVersion) return;
+            listBoxDB.Items.Clear();
+            foreach (DataRow row in table.Rows) listBoxDB.Items.Add(row[0].ToString()!);
+            if (listBoxDB.Items.Count > 0) listBoxDB.SelectedIndex = 0;
+            else { dataGridViewDetail.DataSource = null; empty.Text = "No accessible user databases on this server."; empty.Visible = true; status.Text = "Connected • No user databases"; }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { if (!IsDisposed) ShowError(ex); }
+    }
+    private async void listBoxDB_SelectedIndexChanged(object? sender, EventArgs e) => await LoadObjectsAsync();
+    private async Task LoadObjectsAsync()
+    {
+        if (listBoxDB.SelectedItem is not string database) return;
+        pending?.Cancel(); pending?.Dispose(); pending = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token); var token = pending.Token;
+        DbConnectionHelper.SelectedDatabase = database;
+        string kind = objectKind;
+        foreach (var pair in tabs) { pair.Value.BackColor = pair.Key == kind ? Color.FromArgb(32, 92, 180) : Color.White; pair.Value.ForeColor = pair.Key == kind ? Color.White : Color.FromArgb(24, 42, 70); }
+        string query = kind switch
+        {
+            "Tables" => "SELECT s.name AS SchemaName, t.name AS TableName, (SELECT COUNT(*) FROM sys.columns c WHERE c.object_id=t.object_id) AS Columns, t.create_date AS Created, t.modify_date AS Modified FROM sys.tables t JOIN sys.schemas s ON s.schema_id=t.schema_id ORDER BY s.name,t.name",
+            "Views" => "SELECT SCHEMA_NAME(schema_id) AS SchemaName,name AS ViewName,create_date AS Created,modify_date AS Modified FROM sys.views ORDER BY SchemaName,name",
+            "Procedures" => "SELECT SCHEMA_NAME(schema_id) AS SchemaName,name AS ProcedureName,create_date AS Created,modify_date AS Modified FROM sys.procedures ORDER BY SchemaName,name",
+            "Triggers" => "SELECT OBJECT_SCHEMA_NAME(object_id) AS SchemaName,name AS TriggerName,OBJECT_NAME(parent_id) AS ParentObject,is_disabled AS Disabled,create_date AS Created FROM sys.triggers WHERE parent_class=1 ORDER BY SchemaName,name",
+            _ => "SELECT SCHEMA_NAME(schema_id) AS SchemaName,name AS TypeName,is_table_type AS TableType,max_length AS MaxLength,precision AS Precision,scale AS Scale FROM sys.types WHERE is_user_defined=1 ORDER BY SchemaName,name"
+        };
+        status.Text = $"Loading {kind.ToLowerInvariant()} from {database}…"; empty.Text = "Loading objects…"; empty.Visible = true;
+        try
+        {
+            var table = await QueryAsync(query, database, token);
+            if (token.IsCancellationRequested || IsDisposed) return;
+            dataGridViewDetail.DataSource = table.DefaultView; ApplyFilter();
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { if (!token.IsCancellationRequested) { dataGridViewDetail.DataSource = null; empty.Text = "Unable to load objects. Refresh to try again."; ShowError(ex); } }
+    }
+    private void ApplyFilter()
+    {
+        if (dataGridViewDetail.DataSource is not DataView view) return;
+        string term = textBox1.Text.Trim();
+        // Match literal text, including SQL wildcard characters and unusual column names.
+        // A DataView expression is escaped character by character so wildcard text stays literal.
+        string escaped = string.Concat(term.Select(c => c switch { '\'' => "''", '[' => "[[]", ']' => "[]]", '%' => "[%]", '*' => "[*]", _ => c.ToString() }));
+        view.RowFilter = term.Length == 0 ? "" : string.Join(" OR ", view.Table!.Columns.Cast<DataColumn>().Where(c => c.DataType == typeof(string)).Select(c => $"[{c.ColumnName.Replace("\\", "\\\\").Replace("]", "\\]")}] LIKE '%{escaped}%'"));
+        empty.Text = term.Length == 0 ? "No objects found in this category." : "No matching objects. Try another search.";
+        empty.Visible = view.Count == 0;
+        status.Text = $"{listBoxDB.SelectedItem}  •  {objectKind}  •  {view.Count:N0} of {view.Table!.Rows.Count:N0} objects";
+    }
+    private void textBox1_TextChanged(object? sender, EventArgs e) => ApplyFilter();
+    private string? SelectedName() => dataGridViewDetail.CurrentRow?.DataBoundItem is DataRowView row ? Quote(Convert.ToString(row[0]) ?? "dbo") + "." + Quote(Convert.ToString(row[1])!) : null;
+    private static string Quote(string name) => "[" + name.Replace("]", "]]") + "]";
+    private void viewDataToolStripMenuItem_Click(object? sender, EventArgs e)
+    {
+        if (objectKind is not ("Tables" or "Views") || SelectedName() is not string name) return;
+        using var form = new ViewData { DbName = listBoxDB.Text, tableName = name }; form.ShowDialog(this);
+    }
+    private async Task ShowDefinitionAsync()
+    {
+        if (SelectedName() is not string name) return;
+        if (objectKind == "Procedures") { using var help = new frmSpHelpText { DbName = listBoxDB.Text, SpName = name }; help.ShowDialog(this); return; }
+        try
+        {
+            string literal = name.Replace("'", "''");
+            string sql = objectKind is "Tables" or "Types"
+                ? $"SELECT c.name AS ColumnName,TYPE_NAME(c.user_type_id) AS DataType,c.max_length AS MaxLength,c.is_nullable AS Nullable FROM sys.columns c WHERE c.object_id=COALESCE(OBJECT_ID(N'{literal}'),(SELECT type_table_object_id FROM sys.table_types WHERE user_type_id=TYPE_ID(N'{literal}'))) ORDER BY c.column_id"
+                : $"SELECT OBJECT_DEFINITION(OBJECT_ID(N'{literal}')) AS Definition";
+            var table = await QueryAsync(sql, listBoxDB.Text, lifetime.Token);
+            if (objectKind == "Types" && table.Rows.Count == 0)
+                table = await QueryAsync($"SELECT SCHEMA_NAME(schema_id) AS SchemaName,name AS TypeName,TYPE_NAME(system_type_id) AS BaseType,max_length AS MaxLength,precision,scale,is_nullable AS Nullable FROM sys.types WHERE user_type_id=TYPE_ID(N'{literal}')", listBoxDB.Text, lifetime.Token);
+            if (IsDisposed) return;
+            using var dialog = new Form { Text = name, Size = new Size(900, 650), StartPosition = FormStartPosition.CenterParent };
+            if (objectKind is "Tables" or "Types") dialog.Controls.Add(new DataGridView { Dock = DockStyle.Fill, DataSource = table, ReadOnly = true, AllowUserToAddRows = false, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill });
+            else dialog.Controls.Add(new RichTextBox { Dock = DockStyle.Fill, ReadOnly = true, Font = new Font("Consolas", 11), Text = table.Rows.Count == 0 || table.Rows[0].IsNull(0) ? "Definition unavailable. The object may be encrypted or require VIEW DEFINITION permission." : table.Rows[0][0].ToString(), WordWrap = false });
+            dialog.MinimumSize = new Size(360, 360);
+            AppUi.StyleTree(dialog); dialog.Load += (_, _) => AppUi.FitToScreen(dialog);
+            dialog.ShowDialog(this);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { if (!IsDisposed) ShowError(ex); }
+    }
+    private void ShowError(Exception ex) { status.Text = "Operation failed"; MessageBox.Show(this, ex.Message, "SQL Helper", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+    private bool Connected() { if (!string.IsNullOrWhiteSpace(DbConnectionHelper.ConnectionString)) return true; MessageBox.Show(this, "Connect to a SQL Server first.", "Connection required"); return false; }
+    private async void toolStripButton5_Click(object? sender, EventArgs e) { using var form = new frmConnectSQL(); if (form.ShowDialog(this) == DialogResult.OK) await LoadDatabasesAsync(); }
+    private void toolStripButton1_Click(object? sender, EventArgs e) { if (Connected()) { using var form = new frmStoreProcedureTracking(); form.ShowDialog(this); } }
+    private void toolStripButton2_Click(object? sender, EventArgs e) { if (Connected()) { using var form = new frmTableSearching(); form.ShowDialog(this); } }
+    private void toolStripButton6_Click(object? sender, EventArgs e) { using var form = new frmComparisionDatabase(); form.ShowDialog(this); }
+    private void toolStripButton7_Click(object? sender, EventArgs e) { if (Connected()) { using var form = new frmDummyData(); form.ShowDialog(this); } }
+    private void toolStripTextBox1_Click(object? sender, EventArgs e) { if (Connected()) { using var form = new frm_Sp_Xray(); form.ShowDialog(this); } }
+    private void dataGridViewDetail_MouseDown(object? sender, MouseEventArgs e) { if (e.Button != MouseButtons.Right) return; var hit = dataGridViewDetail.HitTest(e.X, e.Y); if (hit.RowIndex < 0) return; dataGridViewDetail.CurrentCell = dataGridViewDetail.Rows[hit.RowIndex].Cells[0]; viewDataToolStripMenuItem.Enabled = objectKind is "Tables" or "Views"; contextMenuStrip1.Show(dataGridViewDetail, e.Location); }
+    private async void btnTable_Click(object? s, EventArgs e) { objectKind = "Tables"; await LoadObjectsAsync(); }
+    private async void btnShowProcedures_Click(object? s, EventArgs e) { objectKind = "Procedures"; await LoadObjectsAsync(); }
+    private async void btnShowView_Click(object? s, EventArgs e) { objectKind = "Views"; await LoadObjectsAsync(); }
+    private async void btnShowTriggers_Click(object? s, EventArgs e) { objectKind = "Triggers"; await LoadObjectsAsync(); }
+    private async void btnShowTypes_Click(object? s, EventArgs e) { objectKind = "Types"; await LoadObjectsAsync(); }
+    private void dataGridViewTableDetail_CellClick(object? s, DataGridViewCellEventArgs e) { }
+    private void dataGridViewTableDetail_CellPainting(object? s, DataGridViewCellPaintingEventArgs e) { }
+    private void panel1_Paint(object? s, PaintEventArgs e) { }
+    private void panel2_Paint(object? s, PaintEventArgs e) { }
+    private void panel4_Paint(object? s, PaintEventArgs e) { }
+    private void panel2_Click(object? s, EventArgs e) { }
+    private void panel3_Click(object? s, EventArgs e) { }
+    private void panel4_Click(object? s, EventArgs e) { }
 }

@@ -1,146 +1,43 @@
-﻿using Microsoft.Data.SqlClient; // make sure you have this using
-using System;
 using System.Data;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-
-namespace SQL_Helper
+namespace SQL_Helper;
+public partial class frmTableSearching : Form
 {
-    public partial class frmTableSearching : Form
+    private DataTable? originalTable;
+    private readonly CancellationTokenSource lifetime = new();
+    public frmTableSearching() { InitializeComponent(); AppUi.Apply(this); dataGridView1.SelectionMode = DataGridViewSelectionMode.FullRowSelect; dataGridView1.MultiSelect = false; FormClosed += (_, _) => lifetime.Cancel(); }
+    private async void frmTableSearching_Load(object sender, EventArgs e) => await LoadAllTablesInAllDatabases();
+    public async Task LoadAllTablesInAllDatabases()
     {
-        DataTable originalTable;
-
-        public frmTableSearching()
+        button1.Enabled = false;
+        try
         {
-            InitializeComponent();
-
-        }
-
-        private async void frmTableSearching_Load(object sender, EventArgs e)
-        {
-           // CenterLoader();
-            //pictureBox1.Visible = true;      // Show loader
-            await LoadAllTablesInAllDatabases();  // Async load data
-            //pictureBox1.Visible = false;     // Hide loader after load
-        }
-
-        //private void CenterLoader()
-        //{
-        //    if (pictureBox1.Image == null)
-        //        return;
-
-        //    int x = (this.ClientSize.Width - pictureBox1.Width) / 2;
-        //    int y = (this.ClientSize.Height - pictureBox1.Height) / 2;
-        //    pictureBox1.Location = new Point(x, y);
-        //}
-        public async Task LoadAllTablesInAllDatabases()
-        {
-            try
+            var databases = await SqlTools.DatabasesAsync(DbConnectionHelper.ConnectionString, lifetime.Token);
+            var result = new DataTable(); foreach (string name in new[] { "Database", "Schema", "Table" }) result.Columns.Add(name);
+            var failures = new List<string>();
+            foreach (DataRow row in databases.Rows)
             {
-                string? masterConnectionString = DbConnectionHelper.ConnectionString;
-
-                DataTable result = await Task.Run(() =>
+                string database = (string)row[0]; Text = "Finding tables • " + database;
+                try
                 {
-                    DataTable localResult = new DataTable();
-                    localResult.Columns.Add("Database");
-                    localResult.Columns.Add("Schema");
-                    localResult.Columns.Add("Table");
-
-                    using (SqlConnection masterConn = new SqlConnection(masterConnectionString))
-                    {
-                        masterConn.Open();
-
-                        SqlCommand getDatabasesCmd = new SqlCommand(@"
-                    SELECT name 
-                    FROM sys.databases 
-                    WHERE name NOT IN ('master', 'tempdb', 'model', 'msdb')", masterConn);
-
-                        SqlDataAdapter da = new SqlDataAdapter(getDatabasesCmd);
-                        DataTable databases = new DataTable();
-                        da.Fill(databases);
-
-                        foreach (DataRow dbRow in databases.Rows)
-                        {
-                            string dbName = dbRow["name"].ToString();
-
-                            var builder = new SqlConnectionStringBuilder(masterConnectionString)
-                            {
-                                InitialCatalog = dbName
-                            };
-                            string dbConnectionString = builder.ToString();
-
-                            try
-                            {
-                                using (SqlConnection dbConn = new SqlConnection(dbConnectionString))
-                                {
-                                    dbConn.Open();
-
-                                    SqlCommand getTablesCmd = new SqlCommand(@"
-                                SELECT TABLE_SCHEMA, TABLE_NAME 
-                                FROM INFORMATION_SCHEMA.TABLES 
-                                WHERE TABLE_TYPE = 'BASE TABLE'", dbConn);
-
-                                    using (SqlDataReader reader = getTablesCmd.ExecuteReader())
-                                    {
-                                        while (reader.Read())
-                                        {
-                                            localResult.Rows.Add(dbName, reader["TABLE_SCHEMA"].ToString(), reader["TABLE_NAME"].ToString());
-                                        }
-                                    }
-                                }
-                            }
-                            catch (Exception innerEx)
-                            {
-                                Console.WriteLine($"Error in DB '{dbName}': {innerEx.Message}");
-                            }
-                        }
-                    }
-
-                    return localResult;
-                });
-
-                dataGridView1.Invoke((Action)(() =>
-                {
-                    dataGridView1.DataSource = result;
-                    originalTable = result;
-                }));
+                    var tables = await SqlTools.QueryAsync(SqlTools.DatabaseConnection(DbConnectionHelper.ConnectionString, database), "SELECT SCHEMA_NAME(schema_id),name FROM sys.tables ORDER BY schema_id,name", lifetime.Token);
+                    foreach (DataRow table in tables.Rows) result.Rows.Add(database, table[0], table[1]);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) { failures.Add(database + ": " + ex.Message); }
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Error: " + ex.Message);
-            }
+            if (IsDisposed) return;
+            originalTable = result; ApplySearch(); Text = $"Find tables • {result.Rows.Count} tables";
+            if (failures.Count > 0) MessageBox.Show(this, "Results are incomplete. These databases could not be read:\n" + string.Join("\n", failures), "Partial results");
         }
-
-        private void textBox1_TextChanged(object sender, EventArgs e)
-        {
-            string filterText = textBox1.Text.Trim().Replace("'", "''"); // Avoid SQL injection issues
-
-            if (originalTable == null || originalTable.Rows.Count == 0)
-                return;
-
-            DataView dv = new DataView(originalTable);
-            dv.RowFilter = $"Database LIKE '%{filterText}%' OR Schema LIKE '%{filterText}%' OR Table LIKE '%{filterText}%'";
-            dataGridView1.DataSource = dv;
-        }
-
-        private void button1_Click(object sender, EventArgs e)
-        {
-            if (dataGridView1.CurrentRow != null)
-            {
-                string dbName = dataGridView1.CurrentRow.Cells["Database"].Value?.ToString() ?? "";
-                string tableName = dataGridView1.CurrentRow.Cells["Table"].Value?.ToString() ?? "";
-
-                ViewData data = new ViewData();
-                data.DbName = dbName;
-                data.tableName = tableName;
-
-                data.ShowDialog();
-            }
-            else
-            {
-                MessageBox.Show("Please select a row first.");
-            }
-        }
-
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { SqlTools.Error(this, ex); }
+        finally { if (!IsDisposed) button1.Enabled = true; }
+    }
+    private void ApplySearch() { if (originalTable != null) dataGridView1.DataSource = SqlTools.Filter(originalTable, textBox1.Text.Trim()); }
+    private void textBox1_TextChanged(object sender, EventArgs e) => ApplySearch();
+    private void button1_Click(object sender, EventArgs e)
+    {
+        if (dataGridView1.CurrentRow?.DataBoundItem is not DataRowView row) { MessageBox.Show(this, "Select a table first."); return; }
+        using var data = new ViewData { DbName = (string)row["Database"], tableName = SqlTools.Qualify((string)row["Schema"], (string)row["Table"]) }; data.ShowDialog(this);
     }
 }

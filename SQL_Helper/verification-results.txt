@@ -1,0 +1,34 @@
+﻿PASS SQL identifier escaping
+PASS AST variables, CTE exclusion, schema references, and HTTP detection
+PASS SQL comparison preserves string literal case
+PASS SQL comparison ignores comments and whitespace
+PASS Module conversion preserves SQL literals
+PASS Encrypted credential and delimiter round trip
+PASS Legacy authentication compatibility
+PASS Legacy passwords containing delimiters
+PASS Typed integer input
+PASS Empty string and SQL NULL remain distinct
+PASS Typed boolean input
+PASS Typed binary input
+PASS SQL type lengths and temporal precision
+PASS Literal search with brackets, wildcards, and apostrophes
+PASS CSV commas, quotes, and newlines
+PASS Excel export round trip
+PASS Custom sample-data format
+PASS Negative and equal numeric range
+PASS Unsupported migrations fail closed
+PASS Unreadable or unsupported definitions always require review
+PASS Live schema comparison detects columns, literal changes, views, and triggers
+PASS Standard migration has no unsupported blockers
+PASS Live migration converges to development schema and retains production-only objects
+PASS Migration preserves identity seed and increment
+PASS TVP, decimal metadata, and multiple procedure result sets
+PASS Procedure output parameters and return value
+PASS Omitted parameters use the stored procedure default
+PASS Atomic sample insertion with primary keys, foreign keys, typed values, and defaults
+PASS Failed sample generation rolls back all rows
+PASS Mid-insertion cancellation rolls back rows already written
+PASS Composite foreign keys use a consistent referenced tuple
+PASS Explicit destructive migration removes production-only objects
+CLEANUP verification databases removed.
+SUCCESS: 32 checks passed.

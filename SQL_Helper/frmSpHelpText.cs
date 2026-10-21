@@ -1,211 +1,45 @@
-﻿using Microsoft.Data.SqlClient;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
+using Microsoft.Data.SqlClient;
 using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-
-
-namespace SQL_Helper
+namespace SQL_Helper;
+public partial class frmSpHelpText : Form
 {
-    public partial class frmSpHelpText : Form
+    public string DbName { get; set; } = "";
+    public string SpName { get; set; } = "";
+    private readonly CancellationTokenSource lifetime = new();
+    public frmSpHelpText() { InitializeComponent(); AppUi.Apply(this); button1.Text = "Run procedure…"; button2.Text = "Referenced tables"; button1.Enabled = false; FormClosed += (_, _) => lifetime.Cancel(); }
+    private async void frmSpHelpText_Load(object sender, EventArgs e)
     {
-        public string DbName { get; set; }
-        public string SpName { get; set; }
-        public frmSpHelpText()
+        try
         {
-            InitializeComponent();
+            var data = await SqlTools.QueryAsync(SqlTools.DatabaseConnection(DbConnectionHelper.ConnectionString, DbName), "SELECT definition FROM sys.sql_modules WHERE object_id=OBJECT_ID(@name)", lifetime.Token, new SqlParameter("@name", SpName));
+            if (data.Rows.Count == 0 || data.Rows[0].IsNull(0)) throw new InvalidOperationException("The definition is unavailable. Check the object name and VIEW DEFINITION permission.");
+            richTextBox1.Text = (string)data.Rows[0][0]; Text = $"{DbName} • {SpName}"; button1.Enabled = true;
         }
-
-        private async void frmSpHelpText_Load(object sender, EventArgs e)
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { SqlTools.Error(this, ex); }
+    }
+    private async void button1_Click(object sender, EventArgs e)
+    {
+        button1.Enabled = false;
+        try
         {
-            if (string.IsNullOrWhiteSpace(DbName) || string.IsNullOrWhiteSpace(SpName))
+            var parameters = await ProcedureService.ParametersAsync(SqlTools.DatabaseConnection(DbConnectionHelper.ConnectionString, DbName), SpName, lifetime.Token);
+            if (parameters.Any(p => p.Direction != ParameterDirection.Output))
             {
-                MessageBox.Show("Database or Procedure name is missing.");
-                return;
+                using var form = new frmParameters(parameters); if (form.ShowDialog(this) != DialogResult.OK) return;
+                parameters.RemoveAll(parameter => !form.TypedValues.ContainsKey(parameter.ParameterName));
+                foreach (var parameter in parameters) parameter.Value = form.TypedValues[parameter.ParameterName];
             }
-
-            string? connectionString = DbConnectionHelper.ConnectionString;
-            if (string.IsNullOrWhiteSpace(connectionString))
-            {
-                MessageBox.Show("Connection string is missing.");
-                return;
-            }
-
-            try
-            {
-                using SqlConnection conn = new SqlConnection(connectionString);
-                await conn.OpenAsync();
-
-                conn.ChangeDatabase(DbName);
-
-                using SqlCommand cmd = new SqlCommand("sp_helptext", conn);
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.AddWithValue("@objname", SpName);
-
-                using SqlDataReader reader = await cmd.ExecuteReaderAsync();
-
-                StringBuilder sb = new StringBuilder();
-                while (await reader.ReadAsync())
-                {
-                    sb.Append(reader.GetString(0));
-                }
-
-                string spText = sb.ToString();
-                richTextBox1.Text = spText;
-
-                // Check for insert, update, or delete (case-insensitive)
-                if (spText.IndexOf("insert", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    spText.IndexOf("update", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    spText.IndexOf("delete", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    button1.Enabled = false; // Disable button
-                }
-                else
-                {
-                    button1.Enabled = true;  // Enable button
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Error loading stored procedure text:\n" + ex.Message);
-            }
+            using var data = new ViewData { DbName = DbName, SpName = SpName, parameters = parameters }; data.ShowDialog(this);
         }
-
-        private void button1_Click(object sender, EventArgs e)
-        {
-            string connectionString = DbConnectionHelper.ConnectionString;
-            string dbName = this.DbName;
-            string spName = this.SpName;
-
-            var parameters = GetStoredProcedureParameters(connectionString, dbName, spName);
-
-            frmParameters paramForm = new frmParameters(parameters);
-            if (paramForm.ShowDialog() == DialogResult.OK)
-            {
-                var userValues = paramForm.ParameterValues;
-
-                // ✅ Update parameter values from user input
-                foreach (var param in parameters)
-                {
-                    if (userValues.TryGetValue(param.ParameterName, out string value))
-                    {
-                        if (param.SqlDbType == SqlDbType.DateTime || param.SqlDbType == SqlDbType.DateTime2 || param.SqlDbType == SqlDbType.Date)
-                        {
-                            param.Value = DateTime.TryParse(value, out var dt) ? dt : DBNull.Value;
-                        }
-                        else
-                        {
-                            param.Value = string.IsNullOrWhiteSpace(value) ? DBNull.Value : value;
-                        }
-                    }
-                }
-
-                ViewData data = new ViewData();
-                data.SpName = spName;
-                data.DbName = dbName;
-                data.tableName = string.Empty;
-
-                data.parameters = parameters; // ✅ pass updated parameters
-                data.ShowDialog();
-            }
-        }
-
-
-        private List<SqlParameter> GetStoredProcedureParameters(string connectionString, string dbName, string spName)
-        {
-            List<SqlParameter> parameters = new List<SqlParameter>();
-
-            using (SqlConnection conn = new SqlConnection(connectionString))
-            {
-                conn.Open();
-                conn.ChangeDatabase(dbName);
-
-                using (SqlCommand cmd = new SqlCommand(spName, conn))
-                {
-                    cmd.CommandType = CommandType.StoredProcedure;
-                    SqlCommandBuilder.DeriveParameters(cmd); // this auto-loads parameters
-
-                    foreach (SqlParameter param in cmd.Parameters)
-                    {
-                        // Skip return value parameter
-                        if (param.Direction == ParameterDirection.ReturnValue) continue;
-                        parameters.Add(param);
-                    }
-                }
-            }
-
-            return parameters;
-        }
-
-        private void button2_Click(object sender, EventArgs e)
-        {
-            string sqlText = richTextBox1.Text; // Your stored procedure text
-            var result = ExtractTableAndParameters(sqlText);
-
-            if (result.Count == 0)
-            {
-                MessageBox.Show("No tables or parameters found.", "Info");
-                return;
-            }
-
-            StringBuilder sb = new StringBuilder();
-            foreach (var table in result)
-            {
-                sb.AppendLine("Table: " + table.Key);
-                foreach (var param in table.Value)
-                {
-                    sb.AppendLine("  - " + param);
-                }
-                sb.AppendLine(); // Blank line between tables
-            }
-
-            MessageBox.Show(sb.ToString(), "Tables and Parameters");
-        }
-
-
-
-        private Dictionary<string, List<string>> ExtractTableAndParameters(string sqlText)
-        {
-            var result = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
-
-            // Match UPDATE/INSERT INTO/DELETE FROM tableName
-            var tableRegex = new Regex(@"\b(UPDATE|INSERT\s+INTO|DELETE\s+FROM)\s+([a-zA-Z0-9_\.\[\]]+)", RegexOptions.IgnoreCase);
-            var setWhereRegex = new Regex(@"\b(SET|WHERE|VALUES)\s+(.*?)\b(WHERE|FROM|SET|$)", RegexOptions.IgnoreCase | RegexOptions.Singleline);
-
-            foreach (Match tableMatch in tableRegex.Matches(sqlText))
-            {
-                string table = tableMatch.Groups[2].Value.Trim();
-                if (!result.ContainsKey(table))
-                    result[table] = new List<string>();
-
-                // Look for SET or WHERE clause after this table
-                var startIndex = tableMatch.Index + tableMatch.Length;
-                var remainder = sqlText.Substring(startIndex);
-
-                foreach (Match clauseMatch in setWhereRegex.Matches(remainder))
-                {
-                    var clauseText = clauseMatch.Groups[2].Value;
-
-                    // Match @params in the clause
-                    var paramRegex = new Regex(@"@[a-zA-Z0-9_]+");
-                    foreach (Match paramMatch in paramRegex.Matches(clauseText))
-                    {
-                        string param = paramMatch.Value;
-                        if (!result[table].Contains(param))
-                            result[table].Add(param);
-                    }
-                }
-            }
-
-            return result;
-        }
-
-
+        catch (OperationCanceledException) { }
+        catch (Exception ex) { SqlTools.Error(this, ex); }
+        finally { if (!IsDisposed) button1.Enabled = true; }
+    }
+    private void button2_Click(object sender, EventArgs e)
+    {
+        var result = SqlParserHelper.Analyze(richTextBox1.Text);
+        if (result.Errors.Count > 0) { MessageBox.Show(this, string.Join("\n", result.Errors)); return; }
+        MessageBox.Show(this, result.Tables.Count == 0 ? "No static table references found." : string.Join("\n", result.Tables.Select(t => t.TableName + (t.Alias.Length == 0 ? "" : " AS " + t.Alias))), "Referenced tables");
     }
 }
