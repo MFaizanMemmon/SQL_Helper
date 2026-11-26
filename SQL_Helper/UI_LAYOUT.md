@@ -28,10 +28,3 @@ The existing 14-form layout is retained and the new Live Activity Monitor uses t
 No new UI package or target framework change is required. The existing control names, event handlers, SQL services and resize/reflow logic are retained. This is a light workspace theme with navy accents, not a light/dark toggle.
 
 The 70 layout cases and zero-warning build recorded above are from the earlier baseline, not this refresh. The new design has not yet been built or visually verified on Windows. Before merging, build on Windows with the .NET 8 SDK, repeat the existing verification suite, and check the dashboard, every dialog, editable sample-data grid, dynamic result tabs and monitor at 1366x768, 800x600 and compact sizes with 100%/150% display scaling. Confirm keyboard focus and navigation, long database names, long SQL statements, disabled actions, scrolling and data bindings.
-
-
-## Dark console theme (supersedes the light workspace palette)
-
-The shared design now uses a near-black canvas, charcoal surfaces, emerald actions and headings, muted green-gray text, terminal-inspired headers, monospace SQL editors and database navigation, dark grids, tabs and context menus. The monitor uses bright green for inserts, amber for updates and rose for deletes/errors; operation names remain visible. This is a fixed dark theme, not a theme switcher. Native Windows title bars, scrollbars, date-picker chrome and system message boxes may retain OS styling.
-
-Only presentation code changed in this pass; SQL capture and database operations remain unchanged. Windows compilation and visual checks are still pending. Check all dialogs for text contrast, focus, disabled inputs, native controls and editable grid cells before merging.

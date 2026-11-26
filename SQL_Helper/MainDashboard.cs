@@ -35,7 +35,7 @@ public partial class MainDashboard : Form
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
-        root.Controls.Add(AppUi.CreateHeader("Database explorer", "SQL SERVER  /  EXPLORE  /  TRACE  /  COMPARE"), 0, 0);
+        root.Controls.Add(AppUi.CreateHeader("Database explorer", "Connect, inspect, compare and monitor your SQL Server databases."), 0, 0);
         var toolbar = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = true, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, 0, 12) };
         Button Action(string title, EventHandler click)
         {
@@ -61,7 +61,7 @@ public partial class MainDashboard : Form
         split.Panel1MinSize = 70;
         var sidebar = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(10), BackColor = AppUi.Navy };
         sidebar.RowStyles.Add(new RowStyle(SizeType.Absolute, 36)); sidebar.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        sidebar.Controls.Add(new Label { Text = "▸ DATABASES", AutoSize = true, ForeColor = AppUi.Accent, Font = new Font("Consolas", 10, FontStyle.Bold), Margin = new Padding(8, 4, 0, 0) }, 0, 0);
+        sidebar.Controls.Add(new Label { Text = "DATABASES", AutoSize = true, ForeColor = Color.FromArgb(147, 197, 253), Font = new Font("Segoe UI", 10, FontStyle.Bold), Margin = new Padding(8, 4, 0, 0) }, 0, 0);
         listBoxDB.Dock = DockStyle.Fill; listBoxDB.IntegralHeight = false; AppUi.StyleDatabaseList(listBoxDB);
         sidebar.Controls.Add(listBoxDB, 0, 1); split.Panel1.Controls.Add(sidebar);
         var content = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Padding = new Padding(12, 0, 0, 0) };
@@ -70,22 +70,22 @@ public partial class MainDashboard : Form
         var nav = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = true, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
         foreach (string kind in new[] { "Tables", "Views", "Procedures", "Triggers", "Types" })
         {
-            var button = new Button { Text = kind, AutoSize = true, Height = 34, FlatStyle = FlatStyle.Flat, BackColor = AppUi.Surface };
+            var button = new Button { Text = kind, AutoSize = true, Height = 34, FlatStyle = FlatStyle.Flat, BackColor = Color.White };
             button.Click += async (_, _) => { objectKind = kind; await LoadObjectsAsync(); };
             tabs.Add(kind, button); nav.Controls.Add(button);
         }
         content.Controls.Add(nav, 0, 0);
         textBox1.Dock = DockStyle.Fill; textBox1.PlaceholderText = "Search objects in this database…"; textBox1.Margin = new Padding(0, 3, 0, 10);
         content.Controls.Add(textBox1, 0, 1);
-        var gridPanel = new Panel { Dock = DockStyle.Fill, BackColor = AppUi.Surface };
+        var gridPanel = new Panel { Dock = DockStyle.Fill, BackColor = Color.White };
         dataGridViewDetail.Dock = DockStyle.Fill; dataGridViewDetail.ReadOnly = true; dataGridViewDetail.AllowUserToAddRows = false; dataGridViewDetail.AllowUserToDeleteRows = false;
         dataGridViewDetail.MultiSelect = false; dataGridViewDetail.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-        dataGridViewDetail.BackgroundColor = AppUi.Surface; dataGridViewDetail.BorderStyle = BorderStyle.None; dataGridViewDetail.RowHeadersVisible = false;
+        dataGridViewDetail.BackgroundColor = Color.White; dataGridViewDetail.BorderStyle = BorderStyle.None; dataGridViewDetail.RowHeadersVisible = false;
         dataGridViewDetail.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-        dataGridViewDetail.EnableHeadersVisualStyles = false; dataGridViewDetail.ColumnHeadersDefaultCellStyle.BackColor = AppUi.Navy;
+        dataGridViewDetail.EnableHeadersVisualStyles = false; dataGridViewDetail.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(231, 237, 245);
         dataGridViewDetail.ColumnHeadersHeight = 38; dataGridViewDetail.RowTemplate.Height = 30;
-        dataGridViewDetail.AlternatingRowsDefaultCellStyle.BackColor = AppUi.Surface;
-        dataGridViewDetail.DefaultCellStyle.SelectionBackColor = AppUi.Tint; dataGridViewDetail.DefaultCellStyle.SelectionForeColor = AppUi.Ink;
+        dataGridViewDetail.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(247, 249, 252);
+        dataGridViewDetail.DefaultCellStyle.SelectionBackColor = Color.FromArgb(218, 233, 255); dataGridViewDetail.DefaultCellStyle.SelectionForeColor = Color.Black;
         gridPanel.Controls.Add(dataGridViewDetail); gridPanel.Controls.Add(empty); content.Controls.Add(gridPanel, 0, 2);
         split.Panel2.Controls.Add(content); root.Controls.Add(split, 0, 2);
         var strip = new StatusStrip { Dock = DockStyle.Fill, SizingGrip = false }; strip.Items.Add(status); root.Controls.Add(strip, 0, 3);
@@ -111,7 +111,6 @@ public partial class MainDashboard : Form
         };
         Load += (_, _) => AppUi.FitToScreen(this);
         AppUi.StyleTree(this);
-        AppUi.StyleMenu(contextMenuStrip1);
         AppUi.Primary(connectButton);
         AppUi.Primary(liveButton);
         foreach (var pair in tabs) AppUi.Primary(pair.Value, pair.Key == objectKind);

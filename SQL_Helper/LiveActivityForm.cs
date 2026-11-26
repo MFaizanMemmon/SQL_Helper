@@ -27,7 +27,7 @@ internal sealed class LiveActivityForm : Form
         var root = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(20), ColumnCount = 1, RowCount = 4 };
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        root.Controls.Add(AppUi.CreateHeader("Live activity monitor", database + "  //  EXTENDED EVENTS TRACE"), 0, 0);
+        root.Controls.Add(AppUi.CreateHeader("Live activity monitor", database + "  •  Extended Events diagnostics"), 0, 0);
         var bar = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true, Margin = new Padding(0, 0, 0, 12) };
         bar.Controls.AddRange(new Control[] { start, stop, pause, clear, search }); root.Controls.Add(bar, 0, 1);
         var split = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal, Size = new Size(1000, 600), SplitterDistance = 330 };
@@ -36,25 +36,23 @@ internal sealed class LiveActivityForm : Form
         var graphTab = new TabPage("Execution flow"); graphTab.Controls.Add(flow); tabs.TabPages.Add(graphTab);
         var sqlTab = new TabPage("SQL and event details"); sqlTab.Controls.Add(detail); tabs.TabPages.Add(sqlTab);
         split.Panel2.Controls.Add(tabs); root.Controls.Add(split, 0, 2);
-        status.Font = new Font("Consolas", 10); status.ForeColor = AppUi.Muted; status.Margin = new Padding(0, 10, 0, 0);
+        status.ForeColor = AppUi.Muted; status.Margin = new Padding(0, 10, 0, 0);
         status.Text = "Stopped. SQL text can contain sensitive values. Capture stays in memory.";
         root.Controls.Add(status, 0, 3); Controls.Add(root);
         foreach (string column in new[] { "Time (local)", "SP / Module", "Event", "Session", "Operations / objects", "Duration (ms)", "Rows" }) grid.Columns.Add(column, column);
         grid.Columns[4].FillWeight = 180; grid.Columns[2].FillWeight = 120;
         AppUi.StyleTree(this);
         AppUi.Primary(start);
-        stop.ForeColor = AppUi.Danger;
-        flow.Font = new Font("Consolas", 10);
         grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
         grid.CellFormatting += (_, e) =>
         {
             if (e.RowIndex < 0 || (e.ColumnIndex != 2 && e.ColumnIndex != 4)) return;
             if (grid.Rows[e.RowIndex].Tag is not Row row) return;
             var operations = row.Operations;
-            e.CellStyle.ForeColor = row.Event.Event == "error_reported" ? AppUi.Danger
-                : operations.Any(o => o.Operation is "DELETE" or "TRUNCATE") ? AppUi.Danger
-                : operations.Any(o => o.Operation is "UPDATE" or "MERGE") ? AppUi.Caution
-                : operations.Any(o => o.Operation == "INSERT") ? AppUi.Positive
+            e.CellStyle.ForeColor = row.Event.Event == "error_reported" ? Color.FromArgb(185, 28, 28)
+                : operations.Any(o => o.Operation is "DELETE" or "TRUNCATE") ? Color.FromArgb(185, 28, 28)
+                : operations.Any(o => o.Operation is "UPDATE" or "MERGE") ? Color.FromArgb(146, 64, 14)
+                : operations.Any(o => o.Operation == "INSERT") ? Color.FromArgb(21, 128, 61)
                 : AppUi.Muted;
         };
         Load += (_, _) => AppUi.FitToScreen(this);
@@ -173,9 +171,9 @@ internal sealed class LiveActivityForm : Form
             var node = statement.Nodes.Add(op.Operation + " → " + op.Table);
             node.ForeColor = op.Operation switch
             {
-                "INSERT" => AppUi.Positive,
-                "UPDATE" or "MERGE" => AppUi.Caution,
-                "DELETE" or "TRUNCATE" => AppUi.Danger,
+                "INSERT" => Color.FromArgb(21, 128, 61),
+                "UPDATE" or "MERGE" => Color.FromArgb(146, 64, 14),
+                "DELETE" or "TRUNCATE" => Color.FromArgb(185, 28, 28),
                 _ => AppUi.Muted
             };
         }
