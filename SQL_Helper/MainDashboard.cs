@@ -6,7 +6,7 @@ namespace SQL_Helper;
 public partial class MainDashboard : Form
 {
     private readonly ToolStripStatusLabel status = new() { Spring = true, TextAlign = ContentAlignment.MiddleLeft };
-    private readonly Label empty = new() { Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter, Text = "Connect to SQL Server to explore your databases.", ForeColor = Color.SlateGray };
+    private readonly Label empty = new() { Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter, Text = "Connect to SQL Server to explore your databases.", ForeColor = AppUi.Muted, BackColor = AppUi.Surface };
     private string objectKind = "Tables";
     private CancellationTokenSource? pending;
     private readonly CancellationTokenSource lifetime = new();
@@ -28,21 +28,25 @@ public partial class MainDashboard : Form
         Size = new Size(1250, 800);
         StartPosition = FormStartPosition.CenterScreen;
         Font = new Font("Segoe UI", 10);
-        BackColor = Color.FromArgb(244, 247, 251);
+        BackColor = AppUi.Canvas;
         var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Padding = new Padding(20) };
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
+        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
-        root.Controls.Add(new Label { Text = "SQL Helper", Font = new Font("Segoe UI", 24, FontStyle.Bold), AutoSize = true, ForeColor = Color.FromArgb(24, 42, 70) }, 0, 0);
+        root.Controls.Add(AppUi.CreateHeader("Database explorer", "Connect, inspect, compare and monitor your SQL Server databases."), 0, 0);
         var toolbar = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = true, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Margin = new Padding(0, 0, 0, 12) };
-        void Action(string title, EventHandler click) { var b = new Button { Text = title, AutoSize = true, Height = 34, FlatStyle = FlatStyle.Flat, BackColor = Color.White, Margin = new Padding(0, 0, 10, 0) }; b.FlatAppearance.BorderColor = Color.LightSteelBlue; b.Click += click; toolbar.Controls.Add(b); }
-        Action("Connect server", toolStripButton5_Click);
+        Button Action(string title, EventHandler click)
+        {
+            var b = new Button { Text = title, AutoSize = true, Height = 38, FlatStyle = FlatStyle.Flat, Margin = new Padding(0, 0, 8, 8) };
+            b.Click += click; toolbar.Controls.Add(b); return b;
+        }
+        var connectButton = Action("Connect server", toolStripButton5_Click);
         Action("Refresh", async (_, _) => await LoadDatabasesAsync());
         Action("Find tables", toolStripButton2_Click);
         Action("Track procedures", toolStripButton1_Click);
-        Action("Live Activity Monitor", (_, _) =>
+        var liveButton = Action("Live Activity Monitor", (_, _) =>
         {
             if (!Connected()) return;
             if (listBoxDB.SelectedItem is not string database) { MessageBox.Show(this, "Select a database first."); return; }
@@ -55,12 +59,12 @@ public partial class MainDashboard : Form
         root.Controls.Add(toolbar, 0, 1);
         var split = new SplitContainer { Size = new Size(1100, 600), Dock = DockStyle.Fill, FixedPanel = FixedPanel.Panel1, SplitterDistance = 225, Panel1MinSize = 160 };
         split.Panel1MinSize = 70;
-        var sidebar = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(0, 0, 14, 0) };
+        var sidebar = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2, Padding = new Padding(10), BackColor = AppUi.Navy };
         sidebar.RowStyles.Add(new RowStyle(SizeType.Absolute, 36)); sidebar.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        sidebar.Controls.Add(new Label { Text = "DATABASES", AutoSize = true, ForeColor = Color.SlateGray }, 0, 0);
-        listBoxDB.Dock = DockStyle.Fill; listBoxDB.BorderStyle = BorderStyle.None; listBoxDB.ItemHeight = 28; listBoxDB.IntegralHeight = false;
+        sidebar.Controls.Add(new Label { Text = "DATABASES", AutoSize = true, ForeColor = Color.FromArgb(147, 197, 253), Font = new Font("Segoe UI", 10, FontStyle.Bold), Margin = new Padding(8, 4, 0, 0) }, 0, 0);
+        listBoxDB.Dock = DockStyle.Fill; listBoxDB.IntegralHeight = false; AppUi.StyleDatabaseList(listBoxDB);
         sidebar.Controls.Add(listBoxDB, 0, 1); split.Panel1.Controls.Add(sidebar);
-        var content = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
+        var content = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Padding = new Padding(12, 0, 0, 0) };
         content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         content.RowStyles.Add(new RowStyle(SizeType.AutoSize)); content.RowStyles.Add(new RowStyle(SizeType.Absolute, 44)); content.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         var nav = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = true, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink };
@@ -91,7 +95,7 @@ public partial class MainDashboard : Form
         void FitLayout()
         {
             int width = Math.Max(320, viewport.ClientSize.Width - SystemInformation.VerticalScrollBarWidth);
-            root.Size = new Size(width, Math.Max(viewport.ClientSize.Height, width < 640 ? 780 : 540));
+            root.Size = new Size(width, Math.Max(viewport.ClientSize.Height, width < 640 ? 880 : 620));
         }
         viewport.SizeChanged += (_, _) => FitLayout();
         Shown += (_, _) => FitLayout();
@@ -107,6 +111,10 @@ public partial class MainDashboard : Form
         };
         Load += (_, _) => AppUi.FitToScreen(this);
         AppUi.StyleTree(this);
+        AppUi.Primary(connectButton);
+        AppUi.Primary(liveButton);
+        foreach (var pair in tabs) AppUi.Primary(pair.Value, pair.Key == objectKind);
+        dataGridViewDetail.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
         viewOrChangeSchemaToolStripMenuItem.Text = "View definition / columns / run procedure";
         viewOrChangeSchemaToolStripMenuItem.Click += async (_, _) => await ShowDefinitionAsync();
         dataGridViewDetail.CellDoubleClick += async (_, e) => { if (e.RowIndex >= 0) await ShowDefinitionAsync(); };
@@ -141,7 +149,7 @@ public partial class MainDashboard : Form
         pending?.Cancel(); pending?.Dispose(); pending = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token); var token = pending.Token;
         DbConnectionHelper.SelectedDatabase = database;
         string kind = objectKind;
-        foreach (var pair in tabs) { pair.Value.BackColor = pair.Key == kind ? Color.FromArgb(32, 92, 180) : Color.White; pair.Value.ForeColor = pair.Key == kind ? Color.White : Color.FromArgb(24, 42, 70); }
+        foreach (var pair in tabs) AppUi.Primary(pair.Value, pair.Key == kind);
         string query = kind switch
         {
             "Tables" => "SELECT s.name AS SchemaName, t.name AS TableName, (SELECT COUNT(*) FROM sys.columns c WHERE c.object_id=t.object_id) AS Columns, t.create_date AS Created, t.modify_date AS Modified FROM sys.tables t JOIN sys.schemas s ON s.schema_id=t.schema_id ORDER BY s.name,t.name",
