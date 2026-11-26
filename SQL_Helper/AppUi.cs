@@ -287,7 +287,7 @@ internal static class AppUi
             grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells; grid.AllowUserToAddRows = false; grid.ReadOnly = true;
         }
         if (control is RichTextBox editor) { editor.Font = new Font("Consolas", 11); editor.BackColor = Color.White; editor.ForeColor = Ink; editor.WordWrap = false; editor.BorderStyle = BorderStyle.None; }
-        if (control is ListView list) { list.BackColor = Color.White; list.ForeColor = Ink; list.BorderStyle = BorderStyle.None; }
+        if (control is ListView listView) { listView.BackColor = Color.White; listView.ForeColor = Ink; listView.BorderStyle = BorderStyle.None; }
         if (control is TextBox text) { text.BorderStyle = BorderStyle.FixedSingle; text.BackColor = Surface; text.ForeColor = Ink; }
     }
 
