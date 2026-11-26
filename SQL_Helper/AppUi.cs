@@ -3,9 +3,59 @@ namespace SQL_Helper;
 /// <summary>Shared desktop design system. Existing controls retain their data and event handlers.</summary>
 internal static class AppUi
 {
-    internal static readonly Color Ink = Color.FromArgb(25, 42, 66);
-    internal static readonly Color Accent = Color.FromArgb(35, 91, 181);
-    internal static readonly Color Canvas = Color.FromArgb(244, 247, 251);
+    // Fluent-inspired light surfaces and a high-contrast navy workspace header.
+    internal static readonly Color Ink = Color.FromArgb(23, 32, 51);
+    internal static readonly Color Accent = Color.FromArgb(37, 99, 235);
+    internal static readonly Color Canvas = Color.FromArgb(241, 245, 249);
+    internal static readonly Color Surface = Color.White;
+    internal static readonly Color Navy = Color.FromArgb(15, 23, 42);
+    internal static readonly Color Muted = Color.FromArgb(71, 85, 105);
+    internal static readonly Color Line = Color.FromArgb(203, 213, 225);
+    internal static readonly Color Tint = Color.FromArgb(219, 234, 254);
+
+    internal static TableLayoutPanel CreateHeader(string title, string subtitle)
+    {
+        var header = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            ColumnCount = 1, RowCount = 3, BackColor = Navy, Padding = new Padding(18, 12, 18, 12),
+            Margin = new Padding(0, 0, 0, 16)
+        };
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        for (int i = 0; i < 3; i++) header.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        header.Controls.Add(new Label { Text = "SQL HELPER  /  WORKSPACE", AutoSize = true, ForeColor = Color.FromArgb(147, 197, 253), Font = new Font("Segoe UI", 9, FontStyle.Bold), Margin = new Padding(0, 0, 0, 3) }, 0, 0);
+        header.Controls.Add(new Label { Text = title, AutoSize = true, ForeColor = Color.White, Font = new Font("Segoe UI", 22, FontStyle.Bold), Margin = new Padding(0, 0, 0, 3) }, 0, 1);
+        header.Controls.Add(new Label { Text = subtitle, AutoSize = true, ForeColor = Color.FromArgb(203, 213, 225), Margin = Padding.Empty }, 0, 2);
+        header.SizeChanged += (_, _) => { foreach (Control label in header.Controls) label.MaximumSize = new Size(Math.Max(80, header.ClientSize.Width - header.Padding.Horizontal), 0); };
+        return header;
+    }
+
+    internal static void Primary(Button button, bool active = true)
+    {
+        button.BackColor = active ? Accent : Surface;
+        button.ForeColor = active ? Color.White : Ink;
+        button.FlatAppearance.BorderColor = active ? Accent : Line;
+        button.FlatAppearance.MouseOverBackColor = active ? Color.FromArgb(29, 78, 216) : Tint;
+        button.FlatAppearance.MouseDownBackColor = active ? Color.FromArgb(30, 64, 175) : Color.FromArgb(191, 219, 254);
+    }
+
+    internal static void StyleDatabaseList(ListBox list)
+    {
+        list.BackColor = Navy; list.ForeColor = Color.White; list.BorderStyle = BorderStyle.None;
+        list.DrawMode = DrawMode.OwnerDrawFixed; list.ItemHeight = 34;
+        list.DrawItem += (_, e) =>
+        {
+            if (e.Index < 0 || e.Index >= list.Items.Count) return;
+            bool selected = (e.State & DrawItemState.Selected) != 0;
+            using var brush = new SolidBrush(selected ? Accent : Navy);
+            e.Graphics.FillRectangle(brush, e.Bounds);
+            var bounds = Rectangle.Inflate(e.Bounds, -12, 0);
+            TextRenderer.DrawText(e.Graphics, list.GetItemText(list.Items[e.Index]), e.Font ?? list.Font, bounds,
+                selected ? Color.White : Color.FromArgb(226, 232, 240),
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
+            e.DrawFocusRectangle();
+        };
+    }
 
     internal static void Apply(Form form)
     {
@@ -79,12 +129,7 @@ internal static class AppUi
         var host = new TableLayoutPanel { Dock = DockStyle.None, ColumnCount = 1, RowCount = 4, Padding = new Padding(20), MinimumSize = new Size(340, 420), BackColor = Canvas };
         host.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         host.RowStyles.Add(new RowStyle(SizeType.AutoSize)); host.RowStyles.Add(new RowStyle(SizeType.AutoSize)); host.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); host.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        var heading = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 1, RowCount = 2, Margin = new Padding(0, 0, 0, 16) };
-        heading.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        heading.RowStyles.Add(new RowStyle(SizeType.AutoSize)); heading.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        heading.Controls.Add(new Label { Text = title, AutoSize = true, Font = new Font("Segoe UI", 20, FontStyle.Bold), ForeColor = Ink, Margin = new Padding(0, 0, 0, 6) });
-        heading.Controls.Add(new Label { Text = subtitle, AutoSize = true, ForeColor = Color.FromArgb(88, 105, 126), Margin = Padding.Empty });
-        heading.SizeChanged += (_, _) => { foreach (Control label in heading.Controls) label.MaximumSize = new Size(Math.Max(200, heading.ClientSize.Width - 10), 0); };
+        var heading = CreateHeader(title, subtitle);
         host.Controls.Add(heading, 0, 0);
         if (filters != null) host.Controls.Add(filters, 0, 1);
         body.Dock = DockStyle.Fill; body.Margin = new Padding(0, 0, 0, 12); host.Controls.Add(body, 0, 2);
@@ -100,7 +145,7 @@ internal static class AppUi
             {
                 int width = Math.Max(340, viewport.ClientSize.Width - SystemInformation.VerticalScrollBarWidth);
                 int inner = width - 40;
-                foreach (Control label in heading.Controls) label.MaximumSize = new Size(Math.Max(180, inner - 10), 0);
+                foreach (Control label in heading.Controls) label.MaximumSize = new Size(Math.Max(80, inner - heading.Padding.Horizontal), 0);
                 int headingHeight = heading.GetPreferredSize(new Size(inner, 0)).Height + 16;
                 int filterHeight = host.GetControlFromPosition(0, 1)?.GetPreferredSize(new Size(inner, 0)).Height ?? 0;
                 int footerHeight = (footer?.GetPreferredSize(new Size(inner, 0)).Height ?? 0) + (footer == null ? 0 : 12);
@@ -122,9 +167,16 @@ internal static class AppUi
         form.ClientSize = new Size(form is frmConnectSQL or frmSelectCompareDatabase ? 620 : 1050, form is frmConnectSQL or frmSelectCompareDatabase ? 600 : 720);
         form.Load += (_, _) => FitToScreen(form);
         StyleTree(form);
-        foreach (var name in new[] { "btnConnect", "btnFeedData", "confirmParameters" })
-            if (controls.TryGetValue(name, out var primary) && primary is Button button)
-            { button.BackColor = Accent; button.ForeColor = Color.White; button.FlatAppearance.BorderColor = Accent; }
+        string[] primaryNames = form switch
+        {
+            frmConnectSQL or frmCompareDBConnection or frmManageConnections => new[] { "btnConnect" },
+            frmDummyData => new[] { "btnFeedData" },
+            frmParameters => new[] { "confirmParameters" },
+            frmComparisionDatabase or frmSelectCompareDatabase or frmTableSearching or frmStoreProcedureTracking or frmSpHelpText or frm_Sp_Xray => new[] { "button1" },
+            _ => Array.Empty<string>()
+        };
+        foreach (var name in primaryNames)
+            if (controls.TryGetValue(name, out var primary) && primary is Button button) Primary(button);
         form.ResumeLayout(true);
     }
 
@@ -182,28 +234,61 @@ internal static class AppUi
     internal static void StyleTree(Control control)
     {
         foreach (Control child in control.Controls) StyleTree(child);
+        if (control is Form form) { form.BackColor = Canvas; form.ForeColor = Ink; }
         if (control is Panel && control.BackColor == SystemColors.ActiveCaption) control.BackColor = Canvas;
         if (control is FlowLayoutPanel) control.BackColor = Canvas;
+        if (control is TabPage page) { page.BackColor = Surface; page.ForeColor = Ink; page.Padding = new Padding(6); }
+        if (control is TabControl tabs)
+        {
+            tabs.Padding = new Point(15, 6);
+            if (tabs.DrawMode != TabDrawMode.OwnerDrawFixed)
+            {
+                tabs.DrawMode = TabDrawMode.OwnerDrawFixed;
+                tabs.DrawItem += (_, e) =>
+                {
+                    if (e.Index < 0 || e.Index >= tabs.TabPages.Count) return;
+                    bool selected = e.Index == tabs.SelectedIndex;
+                    using var brush = new SolidBrush(selected ? Tint : Canvas);
+                    e.Graphics.FillRectangle(brush, e.Bounds);
+                    if (selected) { using var line = new SolidBrush(Accent); e.Graphics.FillRectangle(line, e.Bounds.X, e.Bounds.Bottom - 3, e.Bounds.Width, 3); }
+                    TextRenderer.DrawText(e.Graphics, tabs.TabPages[e.Index].Text, tabs.Font, e.Bounds,
+                        selected ? Accent : Ink, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
+                    if (selected && tabs.Focused) e.DrawFocusRectangle();
+                };
+            }
+        }
+        if (control is TreeView tree) { tree.BackColor = Surface; tree.ForeColor = Ink; tree.BorderStyle = BorderStyle.None; tree.ItemHeight = 28; tree.HideSelection = false; }
+        if (control is ListBox list && list.DrawMode == DrawMode.Normal) { list.BackColor = Surface; list.ForeColor = Ink; list.BorderStyle = BorderStyle.FixedSingle; }
+        if (control is StatusStrip strip) { strip.BackColor = Surface; strip.ForeColor = Muted; }
+        if (control is LinkLabel link) { link.LinkColor = Accent; link.ActiveLinkColor = Color.FromArgb(29, 78, 216); }
+        if (control is ComboBox combo) { combo.FlatStyle = FlatStyle.Flat; combo.BackColor = Surface; combo.ForeColor = Ink; }
+        if (control is CheckBox check) check.ForeColor = Ink;
         if (control is Button button)
         {
-            button.AutoSize = true; button.MinimumSize = new Size(110, 36); button.Padding = new Padding(10, 3, 10, 3);
-            button.FlatStyle = FlatStyle.Flat; button.FlatAppearance.BorderColor = Color.FromArgb(197, 210, 227); button.BackColor = Color.White; button.ForeColor = Ink;
+            button.AutoSize = true; button.MinimumSize = new Size(110, 38); button.Padding = new Padding(12, 4, 12, 4);
+            button.FlatStyle = FlatStyle.Flat; Primary(button, false);
             button.Cursor = Cursors.Hand; button.UseVisualStyleBackColor = false;
             button.AccessibleName = button.Text.Replace("&", "");
         }
         if (control is DataGridView grid)
         {
-            grid.BackgroundColor = Color.White; grid.BorderStyle = BorderStyle.None; grid.RowHeadersVisible = false; grid.EnableHeadersVisualStyles = false;
-            grid.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(231, 237, 245); grid.ColumnHeadersDefaultCellStyle.ForeColor = Ink;
-            grid.ColumnHeadersDefaultCellStyle.SelectionBackColor = grid.ColumnHeadersDefaultCellStyle.BackColor;
-            grid.ColumnHeadersHeight = 38; grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
-            grid.DefaultCellStyle.SelectionBackColor = Color.FromArgb(218, 233, 255); grid.DefaultCellStyle.SelectionForeColor = Ink;
-            grid.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(247, 249, 252); grid.RowTemplate.Height = 30;
+            grid.BackgroundColor = Surface; grid.BorderStyle = BorderStyle.None; grid.RowHeadersVisible = false; grid.EnableHeadersVisualStyles = false;
+            grid.GridColor = Color.FromArgb(226, 232, 240); grid.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
+            grid.ColumnHeadersBorderStyle = DataGridViewHeaderBorderStyle.None;
+            grid.ColumnHeadersDefaultCellStyle.BackColor = Navy; grid.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
+            grid.ColumnHeadersDefaultCellStyle.SelectionBackColor = Navy; grid.ColumnHeadersDefaultCellStyle.SelectionForeColor = Color.White;
+            grid.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 10, FontStyle.Bold);
+            grid.ColumnHeadersDefaultCellStyle.Padding = new Padding(8, 0, 8, 0);
+            grid.ColumnHeadersHeight = 40; grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+            grid.DefaultCellStyle.BackColor = Surface; grid.DefaultCellStyle.ForeColor = Ink;
+            grid.DefaultCellStyle.SelectionBackColor = Tint; grid.DefaultCellStyle.SelectionForeColor = Ink;
+            grid.DefaultCellStyle.Padding = new Padding(8, 0, 8, 0);
+            grid.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(248, 250, 252); grid.RowTemplate.Height = 34;
             grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells; grid.AllowUserToAddRows = false; grid.ReadOnly = true;
         }
         if (control is RichTextBox editor) { editor.Font = new Font("Consolas", 11); editor.BackColor = Color.White; editor.ForeColor = Ink; editor.WordWrap = false; editor.BorderStyle = BorderStyle.None; }
         if (control is ListView list) { list.BackColor = Color.White; list.ForeColor = Ink; list.BorderStyle = BorderStyle.None; }
-        if (control is TextBox text) text.BorderStyle = BorderStyle.FixedSingle;
+        if (control is TextBox text) { text.BorderStyle = BorderStyle.FixedSingle; text.BackColor = Surface; text.ForeColor = Ink; }
     }
 
     private sealed class ServerCard : Panel
