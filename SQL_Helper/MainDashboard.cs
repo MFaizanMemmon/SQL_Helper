@@ -42,6 +42,13 @@ public partial class MainDashboard : Form
         Action("Refresh", async (_, _) => await LoadDatabasesAsync());
         Action("Find tables", toolStripButton2_Click);
         Action("Track procedures", toolStripButton1_Click);
+        Action("Live Activity Monitor", (_, _) =>
+        {
+            if (!Connected()) return;
+            if (listBoxDB.SelectedItem is not string database) { MessageBox.Show(this, "Select a database first."); return; }
+            using var monitor = new LiveActivityForm(DbConnectionHelper.ConnectionString!, database);
+            monitor.ShowDialog(this);
+        });
         Action("Compare databases", toolStripButton6_Click);
         Action("Generate data", toolStripButton7_Click);
         Action("Procedure X-Ray", toolStripTextBox1_Click);
