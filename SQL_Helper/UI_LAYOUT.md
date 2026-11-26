@@ -19,3 +19,12 @@ Actual movement between monitors with different scaling factors still needs devi
 ## Extending the UI
 
 Call `AppUi.Apply(this)` after `InitializeComponent()` for a supported form. Add a form-specific layout in its switch using existing named controls. Keep business logic in the form. Use `MakeField` for dynamically generated parameter fields and `StyleTree` for controls created after construction. Preserve input names and control collection structure when business logic enumerates controls.
+
+
+## Modern workspace refresh (feature branch)
+
+The existing 14-form layout is retained and the new Live Activity Monitor uses the same design system. The refresh uses a navy workspace header, slate canvas, white surfaces, blue primary actions, a keyboard-accessible owner-drawn database list, updated data grids, modern tab headers, and consistent input/editor styling. Live SQL operations are colored by type while retaining the text labels. Dynamically created preview tabs use the shared theme as well.
+
+No new UI package or target framework change is required. The existing control names, event handlers, SQL services and resize/reflow logic are retained. This is a light workspace theme with navy accents, not a light/dark toggle.
+
+The 70 layout cases and zero-warning build recorded above are from the earlier baseline, not this refresh. The new design has not yet been built or visually verified on Windows. Before merging, build on Windows with the .NET 8 SDK, repeat the existing verification suite, and check the dashboard, every dialog, editable sample-data grid, dynamic result tabs and monitor at 1366x768, 800x600 and compact sizes with 100%/150% display scaling. Confirm keyboard focus and navigation, long database names, long SQL statements, disabled actions, scrolling and data bindings.
