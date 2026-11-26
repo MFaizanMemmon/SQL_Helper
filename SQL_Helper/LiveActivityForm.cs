@@ -24,11 +24,11 @@ internal sealed class LiveActivityForm : Form
         Text = "Live Activity Monitor | " + database;
         Font = new Font("Segoe UI", 10); Size = new Size(1150, 760); MinimumSize = new Size(650, 480);
         StartPosition = FormStartPosition.CenterParent; BackColor = AppUi.Canvas;
-        var root = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(14), ColumnCount = 1, RowCount = 4 };
+        var root = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(20), ColumnCount = 1, RowCount = 4 };
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        root.Controls.Add(new Label { Text = "Live Activity Monitor — " + database, Font = new Font("Segoe UI", 18, FontStyle.Bold), AutoSize = true }, 0, 0);
-        var bar = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true };
+        root.Controls.Add(AppUi.CreateHeader("Live activity monitor", database + "  •  Extended Events diagnostics"), 0, 0);
+        var bar = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true, Margin = new Padding(0, 0, 0, 12) };
         bar.Controls.AddRange(new Control[] { start, stop, pause, clear, search }); root.Controls.Add(bar, 0, 1);
         var split = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal, Size = new Size(1000, 600), SplitterDistance = 330 };
         split.Panel1.Controls.Add(grid);
@@ -36,11 +36,26 @@ internal sealed class LiveActivityForm : Form
         var graphTab = new TabPage("Execution flow"); graphTab.Controls.Add(flow); tabs.TabPages.Add(graphTab);
         var sqlTab = new TabPage("SQL and event details"); sqlTab.Controls.Add(detail); tabs.TabPages.Add(sqlTab);
         split.Panel2.Controls.Add(tabs); root.Controls.Add(split, 0, 2);
+        status.ForeColor = AppUi.Muted; status.Margin = new Padding(0, 10, 0, 0);
         status.Text = "Stopped. SQL text can contain sensitive values. Capture stays in memory.";
         root.Controls.Add(status, 0, 3); Controls.Add(root);
         foreach (string column in new[] { "Time (local)", "SP / Module", "Event", "Session", "Operations / objects", "Duration (ms)", "Rows" }) grid.Columns.Add(column, column);
         grid.Columns[4].FillWeight = 180; grid.Columns[2].FillWeight = 120;
-        AppUi.StyleTree(this); Load += (_, _) => AppUi.FitToScreen(this);
+        AppUi.StyleTree(this);
+        AppUi.Primary(start);
+        grid.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+        grid.CellFormatting += (_, e) =>
+        {
+            if (e.RowIndex < 0 || (e.ColumnIndex != 2 && e.ColumnIndex != 4)) return;
+            if (grid.Rows[e.RowIndex].Tag is not Row row) return;
+            var operations = row.Operations;
+            e.CellStyle.ForeColor = row.Event.Event == "error_reported" ? Color.FromArgb(185, 28, 28)
+                : operations.Any(o => o.Operation is "DELETE" or "TRUNCATE") ? Color.FromArgb(185, 28, 28)
+                : operations.Any(o => o.Operation is "UPDATE" or "MERGE") ? Color.FromArgb(146, 64, 14)
+                : operations.Any(o => o.Operation == "INSERT") ? Color.FromArgb(21, 128, 61)
+                : AppUi.Muted;
+        };
+        Load += (_, _) => AppUi.FitToScreen(this);
         start.Click += async (_, _) => await StartAsync();
         stop.Click += async (_, _) => await StopAsync();
         pause.Click += (_, _) => { paused = !paused; pause.Text = paused ? "Resume display" : "Pause display"; if (!paused) RefreshGrid(); };
@@ -151,7 +166,17 @@ internal sealed class LiveActivityForm : Form
         detail.Text = $"UTC: {e.Timestamp:O}\nEvent: {e.Event}\nSession: {e.SessionId}\nModule: {row.Module}\nApplication: {e.Application}\nLogin: {e.Login}\nDuration (microseconds): {e.DurationUs}\nRows: {e.RowCount}\n\n{e.Statement}";
         var root = flow.Nodes.Add(row.Module.Length == 0 ? "Ad-hoc / unknown module" : row.Module);
         var statement = root.Nodes.Add(e.Event);
-        foreach (var op in row.Operations) statement.Nodes.Add(op.Operation + " → " + op.Table);
+        foreach (var op in row.Operations)
+        {
+            var node = statement.Nodes.Add(op.Operation + " → " + op.Table);
+            node.ForeColor = op.Operation switch
+            {
+                "INSERT" => Color.FromArgb(21, 128, 61),
+                "UPDATE" or "MERGE" => Color.FromArgb(146, 64, 14),
+                "DELETE" or "TRUNCATE" => Color.FromArgb(185, 28, 28),
+                _ => AppUi.Muted
+            };
+        }
         if (row.Operations.Count == 0) statement.Nodes.Add("No direct named table reference identified");
         root.ExpandAll();
     }
