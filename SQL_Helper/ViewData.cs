@@ -13,7 +13,7 @@ public partial class ViewData : Form
     public ViewData()
     {
         InitializeComponent(); AppUi.Apply(this);
-        var parent = (TableLayoutPanel)dataGridView1.Parent!; var position = parent.GetPositionFromControl(dataGridView1); parent.Controls.Remove(dataGridView1); parent.Controls.Add(results, position.Column, position.Row);
+        var parent = (TableLayoutPanel)dataGridView1.Parent!; var position = parent.GetPositionFromControl(dataGridView1); parent.Controls.Remove(dataGridView1); parent.Controls.Add(results, position.Column, position.Row); AppUi.StyleTree(results);
         results.SelectedIndexChanged += (_, _) => ApplySearch(); FormClosed += (_, _) => lifetime.Cancel();
     }
     private async void ViewData_Load(object sender, EventArgs e)
@@ -44,7 +44,7 @@ public partial class ViewData : Form
     private void AddTable(DataTable table, string title)
     {
         var page = new TabPage($"{title} ({table.Rows.Count})"); var grid = tables.Count == 0 ? dataGridView1 : new DataGridView();
-        grid.Dock = DockStyle.Fill; AppUi.StyleTree(grid); page.Controls.Add(grid); tables[page] = (grid, table); results.TabPages.Add(page);
+        grid.Dock = DockStyle.Fill; page.Controls.Add(grid); AppUi.StyleTree(page); tables[page] = (grid, table); results.TabPages.Add(page);
     }
     private DataTable? CurrentData => results.SelectedTab is TabPage page && tables.TryGetValue(page, out var value) ? value.Grid.DataSource as DataTable : null;
     private void ApplySearch()
